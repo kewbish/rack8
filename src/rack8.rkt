@@ -1,8 +1,7 @@
 #lang racket
 
 (define (readRom path)
-  (define contents (file->lines path))
-  (printf contents)
-)
+  (for ([line (file->lines path)])
+    (displayln line)))
 
-(readRom './rack8.rkt')
+(readRom "CONNECT4.ch8")
