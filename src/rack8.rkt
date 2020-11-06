@@ -1,6 +1,7 @@
 #lang racket
+(require srfi/25)
 
-(struct chip8-state (memory [pc #:mutable] [stack #:mutable] regs [reg-i #:mutable]))
+(struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable]))
 
 (define (read-rom path)
   (define loaded (file->bytes path))
@@ -28,5 +29,10 @@
   (bytes-copy! (chip8-state-memory state) 70 #"\360\200\360\200\360")
   (bytes-copy! (chip8-state-memory state) 75 #"\360\200\360\200\200")
 state)
+
+(define state (set-init "CONNECT4.ch8"))
+(define memory (chip8-state-memory state))
+(define graphics (make-vector 2048))
+(define keys (make-bytes 16))
 
 (set-init "CONNECT4.ch8")
