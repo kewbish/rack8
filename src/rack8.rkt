@@ -33,6 +33,7 @@ state)
 
 ; create state object, will be used thruo interpreting
 (define state (set-init "CONNECT4.ch8"))
+
 ; memory -> definition and helper
 (define memory (chip8-state-memory state))
 (define (print-mem mem-state)
@@ -41,7 +42,9 @@ state)
     (printf "~a: ~x~n" counter cell)
     (set! counter (+ counter 1)))
 void)
+
 (define keys (make-bytes 16))
+
 ; graphics -> 2d vector (have to do some interesting vector layering)
 (define graphics (make-vector 64 (make-vector 32 0)))
 ; helper refs and sets, will get values
@@ -49,5 +52,14 @@ void)
   (vector-ref (vector-ref 2d-vec x) y))
 (define (2d-set! 2d-vec x y)
   (vector-set! (vector-ref 2d-vec x) y))
+
+; stacks
+(define pop-stack
+  (match (chip8-state-stack)
+         ['() (error "rack8 - empty stack.")]
+         [(cons h t)
+          (set-chip8-state-stack! state t) h]))
+(define (push-stack v)
+  (set-chip8-state-stack! state cons(v (chip8-state-stack state))))
 
 (print-mem memory)
