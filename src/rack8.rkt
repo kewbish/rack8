@@ -1,9 +1,7 @@
 #lang racket
 
 (struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable]))
-
-(define (read-rom path)
-  (define loaded (file->bytes path))
+(define (read-rom path) (define loaded (file->bytes path))
   loaded
 )
 
@@ -75,7 +73,9 @@ state)
 ; emulate one opcode
 (define (cycle)
   (define inst (+ (* (bytes-ref memory (get-pc)) #x100) (bytes-ref memory (+ (get-pc) 1))))
-  (printf "~x " inst)
+  (match inst
+         [224 (printf "CLEAR SCREEN")]
+         [inst (printf "[~a: ~x|~a] " (get-pc) inst inst)])
   (incre-pc)
 )
 
