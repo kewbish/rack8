@@ -43,8 +43,6 @@ state)
     (set! counter (+ counter 1)))
 void)
 
-(define keys (make-bytes 16))
-
 ; graphics -> 2d vector (have to do some interesting vector layering)
 (define graphics (make-vector 64 (make-vector 32 0)))
 ; helper refs and sets, will get values
@@ -52,14 +50,24 @@ void)
   (vector-ref (vector-ref 2d-vec x) y))
 (define (2d-set! 2d-vec x y)
   (vector-set! (vector-ref 2d-vec x) y))
+(define keys (make-bytes 16))
 
 ; stacks
-(define pop-stack
-  (match (chip8-state-stack)
+(define (pop-stack)
+  (match (chip8-state-stack state)
          ['() (error "rack8 - empty stack.")]
          [(cons h t)
           (set-chip8-state-stack! state t) h]))
 (define (push-stack v)
   (set-chip8-state-stack! state cons(v (chip8-state-stack state))))
+
+; registers and counters
+(define (get-pc) (chip8-state-pc state))
+(define (set-pc v) (set-chip8-state-pc! state v))
+(define (incre-pc) (set-chip8-state-pc! (+ (get-pc) 2)))
+(define (get-reg n) (bytes-ref (chip8-state-registers state) n))
+(define (set-reg n v) (bytes-set! (chip8-state-registers state) n v))
+(define (get-regi) (bytes-ref (chip8-state-reg-i state)))
+(define (set-regi v) (bytes-set! (set-chip8-state-reg-i! state v)))
 
 (print-mem memory)
