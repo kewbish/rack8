@@ -66,10 +66,17 @@ state)
 ; registers and counters
 (define (get-pc) (chip8-state-pc state))
 (define (set-pc v) (set-chip8-state-pc! state v))
-(define (incre-pc) (set-chip8-state-pc! (+ (get-pc) 2)))
+(define (incre-pc) (set-chip8-state-pc! state (+ (get-pc) 2)))
 (define (get-reg n) (bytes-ref (chip8-state-registers state) n))
 (define (set-reg n v) (bytes-set! (chip8-state-registers state) n v))
 (define (get-regi) (bytes-ref (chip8-state-reg-i state)))
 (define (set-regi v) (bytes-set! (set-chip8-state-reg-i! state v)))
 
-(print-mem memory)
+; emulate one opcode
+(define (cycle)
+  (define inst (+ (* (bytes-ref memory (get-pc)) #x100) (bytes-ref memory (+ (get-pc) 1))))
+  (printf "~x " inst)
+  (incre-pc)
+)
+
+(for ([i 100]) (cycle))
