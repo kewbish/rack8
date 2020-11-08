@@ -33,7 +33,14 @@ state)
 
 ; create state object, will be used thruo interpreting
 (define state (set-init "CONNECT4.ch8"))
+; memory -> definition and helper
 (define memory (chip8-state-memory state))
+(define (print-mem mem-state)
+  (define counter 1)
+  (for ([cell (bytes->list mem-state)])
+    (printf "~a: ~x~n" counter cell)
+    (set! counter (+ counter 1)))
+void)
 (define keys (make-bytes 16))
 ; graphics -> 2d vector (have to do some interesting vector layering)
 (define graphics (make-vector 64 (make-vector 32 0)))
@@ -43,6 +50,4 @@ state)
 (define (2d-set! 2d-vec x y)
   (vector-set! (vector-ref 2d-vec x) y))
 
-(define cells (bytes->list memory))
-(for [cell (cells)]
-  printf "~X" cell)
+(print-mem memory)
