@@ -73,8 +73,17 @@ state)
 ; emulate one opcode
 (define (cycle)
   (define inst (+ (* (bytes-ref memory (get-pc)) #x100) (bytes-ref memory (+ (get-pc) 1))))
+  (define (masked mask) (bitwise-and inst mask))
+  ; ? denotes a boolean returner
+  (define (hex-form? mask value) (= (masked mask) value))
+  ; variables
+  (define (nnn) (masked #x0fff))
+  (define (kk) (masked #x00ff))
+  (define (n) (masked #x000f))
+  (define (x) (masked #x00f0))
+  (define (y) (masked #x0f00))
   (match inst
-         [224 (printf "CLEAR SCREEN")]
+         [224 (printf "CLEAR SCREEN") (set! graphics (make-vector 64 (make-vector 32 0)))]
          [inst (printf "[~a: ~x|~a] " (get-pc) inst inst)])
   (incre-pc)
 )
