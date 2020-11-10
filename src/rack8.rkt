@@ -71,7 +71,7 @@ state)
 
 ; emulate one opcode
 (define (cycle)
-  (printf "~x" (bytes-ref memory (get-pc)))
+  ; we multiply by #x100 to shift it to the hundredths (of hex) and add the tens
   (define inst (+ (* (bytes-ref memory (get-pc)) #x100) (bytes-ref memory (+ 1 (get-pc)))))
   (define (masked mask) (bitwise-and inst mask))
   ; ? denotes a boolean returner
@@ -80,21 +80,23 @@ state)
   (define nnn (masked #x0fff))
   (define kk (masked #x00ff))
   (define n (masked #xf000))
+  ; have to divide the mask by 100 to get the ones we want, similarly 10 for one
   (define x (get-reg (/ (masked #x0f00) #x100)))
   (define y (get-reg (/ (masked #x00f0) #x10)))
   ; opcode cycle loop
   (cond
-    [(= inst #x00e0) (printf "CLEAR SCREEN")]
-    [(= inst #x00ee) (printf "RETURN")]
-    [(and (= n #x0000) (not (= inst #x0000))) (printf "CALL AT ~a" nnn)]
-    [(= n #x1000) (printf "JUMP TO ADDRESS ~a" nnn)]
-    [(= n #x2000) (printf "SUBROUTINE AT ~a" nnn)]
-    [(= n #x3000) (printf "SKIP IF EQUAL ~a" (= (get-reg x) kk))]
-    [(= n #x4000) (printf "SKIP IF INEQUAL ~a" (not (= (get-reg x) kk)))]
-    [(= n #x5000) (printf "SKIP IF 2EQUAL ~a" (= (get-reg x) (get-reg y)))]
-    [(= n #x6000) (printf "SET REG ~a" x)]
-    [(= n #x7000) (printf "ADD ~a TO REG ~a" kk x)]
-    [else (printf "[~a: ~x|~a] " (get-pc) inst inst)])
+    [(= inst #x00e0) (printf "[CLEAR SCREEN]")]
+    [(= inst #x00ee) (printf "[RETURN]")]
+    [(and (= n #x0000) (not (= inst #x0000))) (printf "[CALL AT ~a]" nnn)]
+    [(= n #x1000) (printf "[JUMP TO ADDRESS ~a]" nnn)]
+    [(= n #x2000) (printf "[SUBROUTINE AT ~a]" nnn)]
+    [(= n #x3000) (printf "[SKIP IF EQUAL ~a]" (= (get-reg x) kk))]
+    [(= n #x4000) (printf "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk)))]
+    [(= n #x5000) (printf "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y)))]
+    [(= n #x6000) (printf "[SET REG ~a]" x)]
+    [(= n #x7000) (printf "[ADD ~a TO REG ~a]" kk x)]
+    [else (printf "[~a: ~x|~a]" (get-pc) inst inst)])
+  (printf " ")
   (incre-pc)
 )
 
