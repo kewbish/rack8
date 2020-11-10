@@ -79,15 +79,22 @@ state)
   ; variables
   (define (nnn) (masked #x0fff))
   (define (kk) (masked #x00ff))
-  (define (n) (masked #x000f))
-  (define (x) (masked #x00f0))
-  (define (y) (masked #x0f00))
+  (define (n) (masked #xf000))
+  (define (x) (masked #x0f00))
+  (define (y) (masked #x00f0))
   (match n 
          [0
           (cond
             [(= inst 224) (printf "CLEAR SCREEN") (set! graphics (make-vector 64 (make-vector 32 0)))]
             [(= inst 238) (printf "RETURN")]
             [else (printf "CALL AT ~a" nnn)])]
+         [1 (printf "JUMP TO ADDRESS ~a" nnn)]
+         [2 (printf "SUBROUTINE AT ~a" nnn)]
+         [3 (printf "SKIP IF EQUAL ~a" (= (get-reg x) kk))]
+         [4 (printf "SKIP IF INEQUAL ~a" (not (= (get-reg x) kk)))]
+         [5 (printf "SKIP IF 2EQUAL ~a" (= (get-reg x) (get-reg y)))]
+         [6 (printf "SET REG ~a" x)]
+         [7 (printf "ADD ~a TO REG ~a" kk x)]
          [n (printf "[~a: ~x|~a] " (get-pc) inst inst)])
   (incre-pc)
 )
