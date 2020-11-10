@@ -82,9 +82,13 @@ state)
   (define (n) (masked #x000f))
   (define (x) (masked #x00f0))
   (define (y) (masked #x0f00))
-  (match inst
-         [224 (printf "CLEAR SCREEN") (set! graphics (make-vector 64 (make-vector 32 0)))]
-         [inst (printf "[~a: ~x|~a] " (get-pc) inst inst)])
+  (match n 
+         [0
+          (cond
+            [(= inst 224) (printf "CLEAR SCREEN") (set! graphics (make-vector 64 (make-vector 32 0)))]
+            [(= inst 238) (printf "RETURN")]
+            [else (printf "CALL AT ~a" nnn)])]
+         [n (printf "[~a: ~x|~a] " (get-pc) inst inst)])
   (incre-pc)
 )
 
