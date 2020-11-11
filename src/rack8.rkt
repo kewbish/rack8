@@ -84,18 +84,21 @@ state)
   (define x (get-reg (/ (masked #x0f00) #x100)))
   (define y (get-reg (/ (masked #x00f0) #x10)))
   ; opcode cycle loop
-  (cond
-    [(= inst #x00e0) (printf "[CLEAR SCREEN]")]
-    [(= inst #x00ee) (printf "[RETURN]")]
-    [(and (= n #x0000) (not (= inst #x0000))) (printf "[CALL AT ~a]" nnn)]
-    [(= n #x1000) (printf "[JUMP TO ADDRESS ~a]" nnn)]
-    [(= n #x2000) (printf "[SUBROUTINE AT ~a]" nnn)]
-    [(= n #x3000) (printf "[SKIP IF EQUAL ~a]" (= (get-reg x) kk))]
-    [(= n #x4000) (printf "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk)))]
-    [(= n #x5000) (printf "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y)))]
-    [(= n #x6000) (printf "[SET REG ~a]" x)]
-    [(= n #x7000) (printf "[ADD ~a TO REG ~a]" kk x)]
-    [else (printf "[~a: ~x|~a]" (get-pc) inst inst)])
+  (match n
+     [#x0000
+      (cond
+        [(= inst #x00e0) (printf "[CLEAR SCREEN]") (set! graphics (make-vector 64 (make-vector 32 0)))]
+        [(= inst #x00ee) (printf "[RETURN]")]
+        [(and (= n #x0000) (not (= inst #x0000))) (printf "[CALL AT ~a]" nnn)]
+        [else (printf "[EMPTY]")])]
+     [#x1000 (printf "[JUMP TO ADDRESS ~a]" nnn)]
+     [#x2000 (printf "[SUBROUTINE AT ~a]" nnn)]
+     [#x3000 (printf "[SKIP IF EQUAL ~a]" (= (get-reg x) kk))]
+     [#x4000 (printf "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk)))]
+     [#x5000 (printf "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y)))]
+     [#x6000 (printf "[SET REG ~a]" x)]
+     [#x7000 (printf "[ADD ~a TO REG ~a]" kk x)]
+     [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
   (printf " ")
   (incre-pc)
 )
