@@ -69,6 +69,25 @@ state)
 (define (get-regi) (chip8-state-reg-i state))
 (define (set-regi v) (set-chip8-state-reg-i! state v))
 
+; timers
+(struct timer ([value #:mutable] [last-set #:mutable]))
+; these two are actual timer objects
+(define delay-timer (timer 0 0))
+(define sound-timer (timer 0 0))
+; timer helper methods
+(define (set-timer! timer time)
+  (set-timer-value! timer time)
+  (set-timer-last-set! timer (current-milliseconds)))
+(define (tick-timer! timer time)
+  (when (>= (- (current-milliseconds) (timer-last-set timer)) 1000)
+    (begin
+      (set-timer-value! timer (- (timer-value timer) 1))
+      (set-timer-last-set! timer (current-milliseconds)))))
+(define (tick-timers!)
+  (tick-timer! delay-timer)
+  (tick-timer! sound-timer))
+(define (timer-active? timer) (> (timer-value timer) 0))
+
 ; emulate one opcode
 (define (cycle)
   ; we multiply by #x100 to shift it to the hundredths (of hex) and add the tens
@@ -118,8 +137,8 @@ state)
      [#xE000
       (cond
         [(= kk #x9E) (printf "[SKIP IF KEY ~a DN]" x)]
-        [(= kk #xA1) (printf "[SKIP IF KEY ~a UP]" x)])]
-        [else (printf "[INVALID]")]
+        [(= kk #xA1) (printf "[SKIP IF KEY ~a UP]" x)]
+        [else (printf "[INVALID]")])]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
   (printf " ")
   (incre-pc)
