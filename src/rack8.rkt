@@ -110,6 +110,16 @@ state)
         [(= ln 6) (printf "[SHR ~a TO ~a]" x (get-reg x))]
         [(= ln 7) (printf "[SHL ~a TO ~a]" x (get-reg x))]
         [else (printf "[INVALID]")])]
+     [#x9000 (printf "[SKIP NEXT ~a]" (not (= (get-reg x) (get-reg y))))]
+     [#xA000 (printf "[SET I TO ~a]" nnn)]
+     [#xB000 (printf "[JUMP TO ~a+~a ~a]" nnn (get-reg 0) (+ nnn (get-reg 0)))]
+     [#xC000 (printf "[SET ~a TO RAND~a]}" x kk)]
+     [#xD000 (printf "[DRAW ~ab at ~a, ~a]" ln (get-reg x) (get-reg y))]
+     [#xE000
+      (cond
+        [(= kk #x9E) (printf "[SKIP IF KEY ~a DN]" x)]
+        [(= kk #xA1) (printf "[SKIP IF KEY ~a UP]" x)])]
+        [else (printf "[INVALID]")]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
   (printf " ")
   (incre-pc)
