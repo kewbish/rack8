@@ -171,15 +171,30 @@ state)
         [else (printf "[INVALID]")])]
      [#xF000
       (cond
-        [(= kk #x07) (printf "[SET ~a TIMER ~a]" x (timer-value delay-timer))]
-        [(= kk #x0A) (printf "[WAIT KEY TO ~a]" x)]
-        [(= kk #x15) (printf "[SET DELAY ~a]" (get-reg x))]
-        [(= kk #x18) (printf "[SET SOUND ~a]" (get-reg x))]
-        [(= kk #x1E) (printf "[ADD I ~a]" (get-reg x))]
-        [(= kk #x29) (printf "[SET I SPR ~a]" (get-reg x))]
-        [(= kk #x33) (printf "[BCD I ~a]" (get-reg x))]
-        [(= kk #x55) (printf "[STORE I TO ~a]" x)]
-        [(= kk #x65) (printf "[READ FROM I TO ~a]" x)]
+        [(= kk #x07) (printf "[SET ~a TIMER ~a]" x (timer-value delay-timer))
+                     (set-reg x (timer-value delay-timer))]
+        [(= kk #x0A) (printf "[WAIT KEY TO ~a]" x)
+                     ; (define key (read-line))
+                     ; (set-reg x key)
+                     ]
+        [(= kk #x15) (printf "[SET DELAY ~a]" (get-reg x))
+                     (set-timer! delay-timer (get-reg x))]
+        [(= kk #x18) (printf "[SET SOUND ~a]" (get-reg x))
+                     (set-timer! sound-timer (get-reg x))]
+        [(= kk #x1E) (printf "[ADD I ~a]" (get-reg x))
+                     (set-regi (+ (get-regi) (get-reg x)))]
+        [(= kk #x29) (printf "[SET I SPR ~a]" (get-reg x))
+                     (set-regi (* 5 (get-reg x)))]
+        [(= kk #x33) (printf "[BCD I ~a]" (get-reg x))
+                     (bytes-set! memory (get-regi) (/ (get-reg x) #x100))
+                     (bytes-set! memory (+ 1 (get-regi)) (/ (get-reg x) #x010))
+                     (bytes-set! memory (+ 2 (get-regi)) (/ (get-reg x) #x001))]
+        [(= kk #x55) (printf "[STORE I TO ~a]" x)
+                     (for ([i (+ x 1)])
+                          (bytes-set! memory (+ (get-regi) i) (get-reg i)))]
+        [(= kk #x65) (printf "[READ FROM I TO ~a]" x)
+                     (for ([i (+ x 1)])
+                          (set-reg i (bytes-ref memory (+ (get-regi) i))))]
         [else (printf "[INVALID]")])]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
   (printf " ")
