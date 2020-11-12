@@ -121,15 +121,37 @@ state)
      [#x7000 (printf "[ADD ~a TO REG ~a]" kk x) (set-reg x (+ (get-reg x) kk))]
      [#x8000
       (cond
-        [(= ln #x0) (printf "[SET ~a TO ~a]" x (get-reg y))]
-        [(= ln #x1) (printf "[OR ~a TO ~a|~a]" x (get-reg x) (get-reg y))]
-        [(= ln #x2) (printf "[AND ~a TO ~a&~a]" x (get-reg x) (get-reg y))]
-        [(= ln #x3) (printf "[XOR ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
-        [(= ln #x4) (printf "[ADD ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
-        [(= ln #x5) (printf "[SUB ~a TO ~a-~a]" x (get-reg x) (get-reg y))]
-        [(= ln #x6) (printf "[SHR ~a TO ~a]" x (get-reg x))]
-        [(= ln #x7) (printf "[SHL ~a TO ~a]" x (get-reg x))]
-        [(= ln #xE) (printf "[SHL ~a WITH ~a]" x (get-reg x))]
+        [(= ln #x0) (printf "[SET ~a TO ~a]" x (get-reg y)) (set-reg x (get-reg y))]
+        [(= ln #x1) (printf "[OR ~a TO ~a|~a]" x (get-reg x) (get-reg y))
+                    (set-reg x (bitwise-ior (get-reg x) (get-reg y)))]
+        [(= ln #x2) (printf "[AND ~a TO ~a&~a]" x (get-reg x) (get-reg y))
+                    (set-reg x (bitwise-and (get-reg x) (get-reg y)))]
+        [(= ln #x3) (printf "[XOR ~a TO ~a+~a]" x (get-reg x) (get-reg y))
+                    (set-reg x (bitwise-xor (get-reg x) (get-reg y)))]
+        [(= ln #x4) (printf "[ADD ~a TO ~a+~a]" x (get-reg x) (get-reg y))
+                    (define added (+ (get-reg x) (get-reg y)))
+                    (if (> added 255) (begin (set-reg #xF 1) (set! added 255)) (set-reg #xF 0))
+                    (set-reg x added)]
+        [(= ln #x5) (printf "[SUB ~a TO ~a-~a]" x (get-reg x) (get-reg y))
+                    (define subbed (- (get-reg x) (get-reg y)))
+                    (if (> (get-reg x) (get-reg y))
+                      (begin (set-reg #xF 1) (set! subbed (modulo subbed 255)))
+                      (set-reg #xF 0))
+                    (set-reg x subbed)]
+        [(= ln #x6) (printf "[SHR ~a TO ~a]" x (get-reg x))
+                    (set-reg #xF (bitwise-and #x1 (get-reg y)))
+                    (define shiftr (arithmetic-shift (get-reg y) (- 1)))
+                    (set-reg x shiftr)]
+        [(= ln #x7) (printf "[SUBN ~a TO ~a]" x (get-reg x))
+                    (define subbed (- (get-reg y) (get-reg x)))
+                    (if (> (get-reg y) (get-reg x)) 
+                      (begin (set-reg #xF 1) (set! subbed (modulo subbed 255)))
+                      (set-reg #xF 0))
+                    (set-reg x subbed)]
+        [(= ln #xE) (printf "[SHL ~a WITH ~a]" x (get-reg x))
+                    (set-reg #xF (bitwise-and #x80 (get-reg y)))
+                    (define shiftl (arithmetic-shift (get-reg y) 1))
+                    (set-reg x shiftl)]
         [else (printf "[INVALID]")])]
      [#x9000 (printf "[SKIP NEXT ~a]" (not (= (get-reg x) (get-reg y))))]
      [#xA000 (printf "[SET I TO ~a]" nnn)]
