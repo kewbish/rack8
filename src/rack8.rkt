@@ -153,15 +153,21 @@ state)
                     (define shiftl (arithmetic-shift (get-reg y) 1))
                     (set-reg x shiftl)]
         [else (printf "[INVALID]")])]
-     [#x9000 (printf "[SKIP NEXT ~a]" (not (= (get-reg x) (get-reg y))))]
-     [#xA000 (printf "[SET I TO ~a]" nnn)]
-     [#xB000 (printf "[JUMP TO ~a+~a ~a]" nnn (get-reg 0) (+ nnn (get-reg 0)))]
-     [#xC000 (printf "[SET ~a TO RAND~a]}" x kk)]
+     [#x9000 (printf "[SKIP NEXT ~a]" (not (= (get-reg x) (get-reg y))))
+      (if (not (= (get-reg x) (get-reg y))) (incre-pc) (void))]
+     [#xA000 (printf "[SET I TO ~a]" nnn) (set-regi nnn)]
+     [#xB000 (printf "[JUMP TO ~a+~a ~a]" nnn (get-reg #x0) (+ nnn (get-reg #x0)))
+      (set-pc (+ nnn (get-reg #x0)))]
+     [#xC000 (printf "[SET ~a TO RAND~a]}" x kk)
+      (define random (random 0 255))
+      (set-reg x (bitwise-and random kk))]
      [#xD000 (printf "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y))]
      [#xE000
       (cond
-        [(= kk #x9E) (printf "[SKIP IF KEY ~a DN]" x)]
-        [(= kk #xA1) (printf "[SKIP IF KEY ~a UP]" x)]
+        [(= kk #x9E) (printf "[SKIP IF KEY ~a DN]" x)
+                     (if (= (bytes-ref keys x) 1) (incre-pc) (void))]
+        [(= kk #xA1) (printf "[SKIP IF KEY ~a UP]" x)
+                     (if (= (bytes-ref keys x) 0) (incre-pc) (void))]
         [else (printf "[INVALID]")])]
      [#xF000
       (cond
