@@ -93,16 +93,14 @@ state)
   ; we multiply by #x100 to shift it to the hundredths (of hex) and add the tens
   (define inst (+ (* (bytes-ref memory (get-pc)) #x100) (bytes-ref memory (+ 1 (get-pc)))))
   (define (masked mask) (bitwise-and inst mask))
-  ; ? denotes a boolean returner
-  (define (hex-op? mask value) (= (masked mask) value))
   ; variables
   (define nnn (masked #x0fff))
   (define kk (masked #x00ff))
   (define n (masked #xf000))
   (define ln (masked #x000f))
   ; have to divide the mask by 100 to get the ones we want, similarly 10 for one
-  (define x (get-reg (/ (masked #x0f00) #x100)))
-  (define y (get-reg (/ (masked #x00f0) #x10)))
+  (define x (/ (masked #x0f00) #x100))
+  (define y (/ (masked #x00f0) #x10))
   ; opcode cycle loop
   (match n
      [#x0000
@@ -111,33 +109,49 @@ state)
         [(= inst #x00ee) (printf "[RETURN]")]
         [(and (= n #x0000) (not (= inst #x0000))) (printf "[CALL AT ~a]" nnn)]
         [else (printf "[EMPTY]")])]
-     [#x1000 (printf "[JUMP TO ADDRESS ~a]" nnn)]
-     [#x2000 (printf "[SUBROUTINE AT ~a]" nnn)]
-     [#x3000 (printf "[SKIP IF EQUAL ~a]" (= (get-reg x) kk))]
-     [#x4000 (printf "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk)))]
-     [#x5000 (printf "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y)))]
-     [#x6000 (printf "[SET REG ~a]" x)]
-     [#x7000 (printf "[ADD ~a TO REG ~a]" kk x)]
+     [#x1000 (printf "[JUMP TO ADDRESS ~a]" nnn) (set-pc nnn)]
+     [#x2000 (printf "[SUBROUTINE AT ~a]" nnn) (push-stack (get-pc)) (set-pc nnn)]
+     [#x3000 (printf "[SKIP IF EQUAL ~a]" (= (get-reg x) kk))
+      (if (= (get-reg x) kk) (incre-pc) (void))]
+     [#x4000 (printf "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk)))
+      (if (not (= (get-reg x) kk)) (incre-pc) (void))]
+     [#x5000 (printf "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y)))
+      (if (= (get-reg x) (get-reg y)) (incre-pc) (void))]
+     [#x6000 (printf "[SET REG ~a]" x) (set-reg x kk)]
+     [#x7000 (printf "[ADD ~a TO REG ~a]" kk x) (set-reg x (+ (get-reg x) kk))]
      [#x8000
       (cond
-        [(= ln 0) (printf "[SET ~a TO ~a]" x (get-reg y))]
-        [(= ln 1) (printf "[OR ~a TO ~a|~a]" x (get-reg x) (get-reg y))]
-        [(= ln 2) (printf "[AND ~a TO ~a&~a]" x (get-reg x) (get-reg y))]
-        [(= ln 3) (printf "[XOR ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
-        [(= ln 4) (printf "[ADD ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
-        [(= ln 5) (printf "[SUB ~a TO ~a-~a]" x (get-reg x) (get-reg y))]
-        [(= ln 6) (printf "[SHR ~a TO ~a]" x (get-reg x))]
-        [(= ln 7) (printf "[SHL ~a TO ~a]" x (get-reg x))]
+        [(= ln #x0) (printf "[SET ~a TO ~a]" x (get-reg y))]
+        [(= ln #x1) (printf "[OR ~a TO ~a|~a]" x (get-reg x) (get-reg y))]
+        [(= ln #x2) (printf "[AND ~a TO ~a&~a]" x (get-reg x) (get-reg y))]
+        [(= ln #x3) (printf "[XOR ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
+        [(= ln #x4) (printf "[ADD ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
+        [(= ln #x5) (printf "[SUB ~a TO ~a-~a]" x (get-reg x) (get-reg y))]
+        [(= ln #x6) (printf "[SHR ~a TO ~a]" x (get-reg x))]
+        [(= ln #x7) (printf "[SHL ~a TO ~a]" x (get-reg x))]
+        [(= ln #xE) (printf "[SHL ~a WITH ~a]" x (get-reg x))]
         [else (printf "[INVALID]")])]
      [#x9000 (printf "[SKIP NEXT ~a]" (not (= (get-reg x) (get-reg y))))]
      [#xA000 (printf "[SET I TO ~a]" nnn)]
      [#xB000 (printf "[JUMP TO ~a+~a ~a]" nnn (get-reg 0) (+ nnn (get-reg 0)))]
      [#xC000 (printf "[SET ~a TO RAND~a]}" x kk)]
-     [#xD000 (printf "[DRAW ~ab at ~a, ~a]" ln (get-reg x) (get-reg y))]
+     [#xD000 (printf "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y))]
      [#xE000
       (cond
         [(= kk #x9E) (printf "[SKIP IF KEY ~a DN]" x)]
         [(= kk #xA1) (printf "[SKIP IF KEY ~a UP]" x)]
+        [else (printf "[INVALID]")])]
+     [#xF000
+      (cond
+        [(= kk #x07) (printf "[SET ~a TIMER ~a]" x (timer-value delay-timer))]
+        [(= kk #x0A) (printf "[WAIT KEY TO ~a]" x)]
+        [(= kk #x15) (printf "[SET DELAY ~a]" (get-reg x))]
+        [(= kk #x18) (printf "[SET SOUND ~a]" (get-reg x))]
+        [(= kk #x1E) (printf "[ADD I ~a]" (get-reg x))]
+        [(= kk #x29) (printf "[SET I SPR ~a]" (get-reg x))]
+        [(= kk #x33) (printf "[BCD I ~a]" (get-reg x))]
+        [(= kk #x55) (printf "[STORE I TO ~a]" x)]
+        [(= kk #x65) (printf "[READ FROM I TO ~a]" x)]
         [else (printf "[INVALID]")])]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
   (printf " ")
