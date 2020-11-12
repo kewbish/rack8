@@ -80,6 +80,7 @@ state)
   (define nnn (masked #x0fff))
   (define kk (masked #x00ff))
   (define n (masked #xf000))
+  (define ln (masked #x000f))
   ; have to divide the mask by 100 to get the ones we want, similarly 10 for one
   (define x (get-reg (/ (masked #x0f00) #x100)))
   (define y (get-reg (/ (masked #x00f0) #x10)))
@@ -98,6 +99,17 @@ state)
      [#x5000 (printf "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y)))]
      [#x6000 (printf "[SET REG ~a]" x)]
      [#x7000 (printf "[ADD ~a TO REG ~a]" kk x)]
+     [#x8000
+      (cond
+        [(= ln 0) (printf "[SET ~a TO ~a]" x (get-reg y))]
+        [(= ln 1) (printf "[OR ~a TO ~a|~a]" x (get-reg x) (get-reg y))]
+        [(= ln 2) (printf "[AND ~a TO ~a&~a]" x (get-reg x) (get-reg y))]
+        [(= ln 3) (printf "[XOR ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
+        [(= ln 4) (printf "[ADD ~a TO ~a+~a]" x (get-reg x) (get-reg y))]
+        [(= ln 5) (printf "[SUB ~a TO ~a-~a]" x (get-reg x) (get-reg y))]
+        [(= ln 6) (printf "[SHR ~a TO ~a]" x (get-reg x))]
+        [(= ln 7) (printf "[SHL ~a TO ~a]" x (get-reg x))]
+        [else (printf "[INVALID]")])]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
   (printf " ")
   (incre-pc)
