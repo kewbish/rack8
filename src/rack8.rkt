@@ -174,8 +174,8 @@ state)
         [(= kk #x07) (printf "[SET ~a TIMER ~a]" x (timer-value delay-timer))
                      (set-reg x (timer-value delay-timer))]
         [(= kk #x0A) (printf "[WAIT KEY TO ~a]" x)
-                     ; (define key (read-line))
-                     ; (set-reg x key)
+                     (define key (read-byte))
+                     (set-reg x key)
                      ]
         [(= kk #x15) (printf "[SET DELAY ~a]" (get-reg x))
                      (set-timer! delay-timer (get-reg x))]
