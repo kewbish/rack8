@@ -115,99 +115,99 @@ state)
   (match n
      [#x0000
       (cond
-        [(= inst #x00e0) (printf "[CLEAR SCREEN]") (set! graphics (make-vector 64 (make-vector 32 0)))]
-        [(= inst #x00ee) (printf "[RETURN]")]
-        [(and (= n #x0000) (not (= inst #x0000))) (printf "[CALL AT ~a]" nnn)]
-        [else (printf "[EMPTY]")])]
-     [#x1000 (printf "[JUMP TO ADDRESS ~a]" nnn) (set-pc nnn)]
-     [#x2000 (printf "[SUBROUTINE AT ~a]" nnn) (push-stack (get-pc)) (set-pc nnn)]
-     [#x3000 (printf "[SKIP IF EQUAL ~a]" (= (get-reg x) kk))
+        [(= inst #x00e0) (charterm-display "[CLEAR SCREEN]") (set! graphics (make-vector 64 (make-vector 32 0)))]
+        [(= inst #x00ee) (charterm-display "[RETURN]")]
+        [(and (= n #x0000) (not (= inst #x0000))) (charterm-display "[CALL AT ~a]" nnn)]
+        [else (charterm-display "[EMPTY]")])]
+     [#x1000 (charterm-display (format "[JUMP TO ADDRESS ~a]" nnn)) (set-pc nnn)]
+     [#x2000 (charterm-display (format "[SUBROUTINE AT ~a]" nnn)) (push-stack (get-pc)) (set-pc nnn)]
+     [#x3000 (charterm-display (format "[SKIP IF EQUAL ~a]" (= (get-reg x) kk)))
       (if (= (get-reg x) kk) (incre-pc) (void))]
-     [#x4000 (printf "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk)))
+     [#x4000 (charterm-display (format "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk))))
       (if (not (= (get-reg x) kk)) (incre-pc) (void))]
-     [#x5000 (printf "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y)))
+     [#x5000 (charterm-display (format "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y))))
       (if (= (get-reg x) (get-reg y)) (incre-pc) (void))]
-     [#x6000 (printf "[SET REG ~a]" x) (set-reg x kk)]
-     [#x7000 (printf "[ADD ~a TO REG ~a]" kk x) (set-reg x (+ (get-reg x) kk))]
+     [#x6000 (charterm-display (format "[SET REG ~a]" x)) (set-reg x kk)]
+     [#x7000 (charterm-display (format "[ADD ~a TO REG ~a]" kk x)) (set-reg x (+ (get-reg x) kk))]
      [#x8000
       (cond
-        [(= ln #x0) (printf "[SET ~a TO ~a]" x (get-reg y)) (set-reg x (get-reg y))]
-        [(= ln #x1) (printf "[OR ~a TO ~a|~a]" x (get-reg x) (get-reg y))
+        [(= ln #x0) (charterm-display (format "[SET ~a TO ~a]" x (get-reg y)) (set-reg x (get-reg y)))]
+        [(= ln #x1) (charterm-display (format "[OR ~a TO ~a|~a]" x (get-reg x) (get-reg y)))
                     (set-reg x (bitwise-ior (get-reg x) (get-reg y)))]
-        [(= ln #x2) (printf "[AND ~a TO ~a&~a]" x (get-reg x) (get-reg y))
+        [(= ln #x2) (charterm-display (format "[AND ~a TO ~a&~a]" x (get-reg x) (get-reg y)))
                     (set-reg x (bitwise-and (get-reg x) (get-reg y)))]
-        [(= ln #x3) (printf "[XOR ~a TO ~a+~a]" x (get-reg x) (get-reg y))
+        [(= ln #x3) (charterm-display (format "[XOR ~a TO ~a+~a]" x (get-reg x) (get-reg y)))
                     (set-reg x (bitwise-xor (get-reg x) (get-reg y)))]
-        [(= ln #x4) (printf "[ADD ~a TO ~a+~a]" x (get-reg x) (get-reg y))
+        [(= ln #x4) (charterm-display (format "[ADD ~a TO ~a+~a]" x (get-reg x) (get-reg y)))
                     (define added (+ (get-reg x) (get-reg y)))
                     (if (> added 255) (begin (set-reg #xF 1) (set! added 255)) (set-reg #xF 0))
                     (set-reg x added)]
-        [(= ln #x5) (printf "[SUB ~a TO ~a-~a]" x (get-reg x) (get-reg y))
+        [(= ln #x5) (charterm-display (format "[SUB ~a TO ~a-~a]" x (get-reg x) (get-reg y)))
                     (define subbed (- (get-reg x) (get-reg y)))
                     (if (> (get-reg x) (get-reg y))
                       (begin (set-reg #xF 1) (set! subbed (modulo subbed 255)))
                       (set-reg #xF 0))
                     (set-reg x subbed)]
-        [(= ln #x6) (printf "[SHR ~a TO ~a]" x (get-reg x))
+        [(= ln #x6) (charterm-display (format "[SHR ~a TO ~a]" x (get-reg x)))
                     (set-reg #xF (bitwise-and #x1 (get-reg y)))
                     (define shiftr (arithmetic-shift (get-reg y) (- 1)))
                     (set-reg x shiftr)]
-        [(= ln #x7) (printf "[SUBN ~a TO ~a]" x (get-reg x))
+        [(= ln #x7) (charterm-display (format "[SUBN ~a TO ~a]" x (get-reg x)))
                     (define subbed (- (get-reg y) (get-reg x)))
                     (if (> (get-reg y) (get-reg x)) 
                       (begin (set-reg #xF 1) (set! subbed (modulo subbed 255)))
                       (set-reg #xF 0))
                     (set-reg x subbed)]
-        [(= ln #xE) (printf "[SHL ~a WITH ~a]" x (get-reg x))
+        [(= ln #xE) (charterm-display (format "[SHL ~a WITH ~a]" x (get-reg x)))
                     (set-reg #xF (bitwise-and #x80 (get-reg y)))
                     (define shiftl (arithmetic-shift (get-reg y) 1))
                     (set-reg x shiftl)]
-        [else (printf "[INVALID]")])]
-     [#x9000 (printf "[SKIP NEXT ~a]" (not (= (get-reg x) (get-reg y))))
+        [else (charterm-display "[INVALID]")])]
+     [#x9000 (charterm-display (format "[SKIP NEXT ~a]" (not (= (get-reg x) (get-reg y)))))
       (if (not (= (get-reg x) (get-reg y))) (incre-pc) (void))]
-     [#xA000 (printf "[SET I TO ~a]" nnn) (set-regi nnn)]
-     [#xB000 (printf "[JUMP TO ~a+~a ~a]" nnn (get-reg #x0) (+ nnn (get-reg #x0)))
+     [#xA000 (charterm-display ("[SET I TO ~a]" nnn)) (set-regi nnn)]
+     [#xB000 (charterm-display (format "[JUMP TO ~a+~a ~a]" nnn (get-reg #x0) (+ nnn (get-reg #x0))))
       (set-pc (+ nnn (get-reg #x0)))]
-     [#xC000 (printf "[SET ~a TO RAND~a]}" x kk)
+     [#xC000 (charterm-display (format "[SET ~a TO RAND~a]}" x kk))
       (define random (random 0 255))
       (set-reg x (bitwise-and random kk))]
-     [#xD000 (printf "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y))]
+     [#xD000 (charterm-display (format "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y)))]
      [#xE000
       (cond
-        [(= kk #x9E) (printf "[SKIP IF KEY ~a DN]" x)
+        [(= kk #x9E) (charterm-display (format "[SKIP IF KEY ~a DN]" x))
                      (if (= (bytes-ref keys x) 1) (incre-pc) (void))]
-        [(= kk #xA1) (printf "[SKIP IF KEY ~a UP]" x)
+        [(= kk #xA1) (charterm-display (format "[SKIP IF KEY ~a UP]" x))
                      (if (= (bytes-ref keys x) 0) (incre-pc) (void))]
-        [else (printf "[INVALID]")])]
+        [else (charterm-display "[INVALID]")])]
      [#xF000
       (cond
-        [(= kk #x07) (printf "[SET ~a TIMER ~a]" x (timer-value delay-timer))
+        [(= kk #x07) (charterm-display (format "[SET ~a TIMER ~a]" x (timer-value delay-timer)))
                      (set-reg x (timer-value delay-timer))]
-        [(= kk #x0A) (printf "[WAIT KEY TO ~a]" x)
+        [(= kk #x0A) (charterm-display (format "[WAIT KEY TO ~a]" x))
                      ; (define key (read-byte))
                      ; (set-reg x key)
                      ]
-        [(= kk #x15) (printf "[SET DELAY ~a]" (get-reg x))
+        [(= kk #x15) (charterm-display (format "[SET DELAY ~a]" (get-reg x)))
                      (set-timer! delay-timer (get-reg x))]
-        [(= kk #x18) (printf "[SET SOUND ~a]" (get-reg x))
+        [(= kk #x18) (charterm-display (format "[SET SOUND ~a]" (get-reg x)))
                      (set-timer! sound-timer (get-reg x))]
-        [(= kk #x1E) (printf "[ADD I ~a]" (get-reg x))
+        [(= kk #x1E) (charterm-display (format "[ADD I ~a]" (get-reg x)))
                      (set-regi (+ (get-regi) (get-reg x)))]
-        [(= kk #x29) (printf "[SET I SPR ~a]" (get-reg x))
+        [(= kk #x29) (charterm-display (format "[SET I SPR ~a]" (get-reg x)))
                      (set-regi (* 5 (get-reg x)))]
-        [(= kk #x33) (printf "[BCD I ~a]" (get-reg x))
+        [(= kk #x33) (charterm-display (format "[BCD I ~a]" (get-reg x)))
                      (bytes-set! memory (get-regi) (/ (get-reg x) #x100))
                      (bytes-set! memory (+ 1 (get-regi)) (/ (get-reg x) #x010))
                      (bytes-set! memory (+ 2 (get-regi)) (/ (get-reg x) #x001))]
-        [(= kk #x55) (printf "[STORE I TO ~a]" x)
+        [(= kk #x55) (charterm-display (format "[STORE I TO ~a]" x))
                      (for ([i (+ x 1)])
                           (bytes-set! memory (+ (get-regi) i) (get-reg i)))]
-        [(= kk #x65) (printf "[READ FROM I TO ~a]" x)
+        [(= kk #x65) (charterm-display (format "[READ FROM I TO ~a]" x))
                      (for ([i (+ x 1)])
                           (set-reg i (bytes-ref memory (+ (get-regi) i))))]
-        [else (printf "[INVALID]")])]
-     [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
-  (printf " ")
+        [else (charterm-display "[INVALID]")])]
+     [n (charterm-display "[~a: ~x|~a]" (get-pc) inst inst)])
+  (charterm-display " ")
   (incre-pc)
 )
 
