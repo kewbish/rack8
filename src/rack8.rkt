@@ -1,4 +1,5 @@
-#lang racket
+#lang racket/base
+(require racket/gui)
 
 (struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable]))
 (define (read-rom path) (define loaded (file->bytes path)) loaded
@@ -87,6 +88,10 @@ state)
   (tick-timer! delay-timer)
   (tick-timer! sound-timer))
 (define (timer-active? timer) (> (timer-value timer) 0))
+
+; graphics
+(define frame (new frame% [label "rack8"]))
+(send frame show #t)
 
 ; emulate one opcode
 (define (cycle)
