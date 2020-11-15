@@ -49,8 +49,8 @@ state)
 ; helper refs and sets, will get values
 (define (2d-ref 2d-vec x y)
   (vector-ref (vector-ref 2d-vec x) y))
-(define (2d-set! 2d-vec x y)
-  (vector-set! (vector-ref 2d-vec x) y))
+(define (2d-set! 2d-vec x y v)
+  (vector-set! (vector-ref 2d-vec x) y v))
 (define keys (make-bytes 16))
 (define key-map #hash((#\1 . 0) (#\2 . 1) (#\3 . 2) (#\4 . 3)
   (#\q . 4) (#\w . 5) (#\e . 6) (#\r . 7)
@@ -172,7 +172,11 @@ state)
      [#xC000 (with-charterm (charterm-display (format "[SET ~a TO RAND~a]}" x kk)))
       (define random (random 0 255))
       (set-reg x (bitwise-and random kk))]
-     [#xD000 (with-charterm (charterm-display (format "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y))))]
+     [#xD000 (with-charterm (charterm-display (format "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y))))
+      (for ([i ln]) (for ([j 8])
+                         (2d-set! graphics
+                         (+ (get-reg x) j) (+ (get-reg y) i)
+                         (bytes-ref memory (+ (get-regi) i)))))]
      [#xE000
       (cond
         [(= kk #x9E) (with-charterm (charterm-display (format "[SKIP IF KEY ~a DN]" x)))
