@@ -1,9 +1,10 @@
-#lang racket/base
-(require racket/gui)
+#lang racket
+(require charterm)
 
 (struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable]))
-(define (read-rom path) (define loaded (file->bytes path)) loaded
-)
+(define (read-rom path)
+  (define loaded (file->bytes path))
+  loaded)
 
 (define (set-init path)
   (define rom-bytes (read-rom path))
@@ -89,9 +90,13 @@ state)
   (tick-timer! sound-timer))
 (define (timer-active? timer) (> (timer-value timer) 0))
 
-; graphics
-(define frame (new frame% [label "rack8"]))
-(send frame show #t)
+; screen display 
+(with-charterm
+ (charterm-clear-screen)
+ (let ((key (charterm-read-key)))
+   (charterm-cursor 1 1)
+   (charterm-clear-line)
+   (printf "~S was pressed" key)))
 
 ; emulate one opcode
 (define (cycle)
@@ -179,8 +184,8 @@ state)
         [(= kk #x07) (printf "[SET ~a TIMER ~a]" x (timer-value delay-timer))
                      (set-reg x (timer-value delay-timer))]
         [(= kk #x0A) (printf "[WAIT KEY TO ~a]" x)
-                     (define key (read-byte))
-                     (set-reg x key)
+                     ; (define key (read-byte))
+                     ; (set-reg x key)
                      ]
         [(= kk #x15) (printf "[SET DELAY ~a]" (get-reg x))
                      (set-timer! delay-timer (get-reg x))]
