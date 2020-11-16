@@ -112,6 +112,13 @@ state)
   ; have to divide the mask by 100 to get the ones we want, similarly 10 for one
   (define x (/ (masked #x0f00) #x100))
   (define y (/ (masked #x00f0) #x10))
+  ; get-key loop
+  (bytes-set! keys (make-bytes 16))
+  (with-charterm
+    (define ckey (charterm-read-key 0.000000001))
+    (if (dict-has-key? key-map key)
+      (bytes-set! keys 1 (dict-ref key-map key)))
+    )
   ; opcode cycle loop
   (match n
      [#x0000
@@ -190,7 +197,7 @@ state)
                      (set-reg x (timer-value delay-timer))]
         [(= kk #x0A) (with-charterm (charterm-display (format "[WAIT KEY TO ~a]" x))
                                     (define key (charterm-read-key))
-                                    (if dict-has-key? key-map key)
+                                    (if (dict-has-key? key-map key)
                                         (set-reg x (dict-ref key-map key)))
                      ]
         [(= kk #x15) (with-charterm (charterm-display (format "[SET DELAY ~a]" (get-reg x))))
