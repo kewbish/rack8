@@ -113,11 +113,12 @@ state)
   (define x (/ (masked #x0f00) #x100))
   (define y (/ (masked #x00f0) #x10))
   ; get-key loop
-  (bytes-set! keys (make-bytes 16))
+  (for ([i 16])
+       (bytes-set! keys i 0))
   (with-charterm
-    (define ckey (charterm-read-key 0.000000001))
-    (if (dict-has-key? key-map key)
-      (bytes-set! keys 1 (dict-ref key-map key)))
+    (define ckey (charterm-read-key #:timeout 0.000000001))
+    (if (dict-has-key? key-map ckey)
+      (bytes-set! keys 1 (dict-ref key-map ckey)) (void))
     )
   ; opcode cycle loop
   (match n
@@ -183,7 +184,7 @@ state)
       (for ([i ln]) (for ([j 8])
                          (2d-set! graphics
                          (+ (get-reg x) j) (+ (get-reg y) i)
-                         (bytes-ref memory (+ (get-regi) i)))))]
+                         (bitwise-xor (bytes-ref memory (+ (get-regi) i)) (2d-ref graphics j i)))))]
      [#xE000
       (cond
         [(= kk #x9E) (with-charterm (charterm-display (format "[SKIP IF KEY ~a DN]" x)))
@@ -198,7 +199,7 @@ state)
         [(= kk #x0A) (with-charterm (charterm-display (format "[WAIT KEY TO ~a]" x))
                                     (define key (charterm-read-key))
                                     (if (dict-has-key? key-map key)
-                                        (set-reg x (dict-ref key-map key)))
+                                        (set-reg x (dict-ref key-map key)) (void)))
                      ]
         [(= kk #x15) (with-charterm (charterm-display (format "[SET DELAY ~a]" (get-reg x))))
                      (set-timer! delay-timer (get-reg x))]
