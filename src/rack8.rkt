@@ -51,6 +51,15 @@ state)
   (vector-ref (vector-ref 2d-vec x) y))
 (define (2d-set! 2d-vec x y v)
   (vector-set! (vector-ref 2d-vec x) y v))
+(define (graphics-print graphics)
+  (define graphics-string (make-bytes 2048))
+  (for ([j 64]) (for ([i 32])
+                     (if (= (2d-ref graphics j i) 128)
+                       (bytes-set! graphics-string (+ j (* i 64)) 77)
+                       (bytes-set! graphics-string (+ j (* i 64)) 95))))
+  (with-charterm (charterm-display graphics-string)))
+
+; keys
 (define keys (make-bytes 16))
 (define key-map #hash((#\1 . 0) (#\2 . 1) (#\3 . 2) (#\4 . 3)
   (#\q . 4) (#\w . 5) (#\e . 6) (#\r . 7)
@@ -221,7 +230,8 @@ state)
                           (set-reg i (bytes-ref memory (+ (get-regi) i))))]
         [else (with-charterm (charterm-display "[INVALID]"))])]
      [n (with-charterm (charterm-display "[~a: ~x|~a]" (get-pc) inst inst))])
-  (with-charterm (charterm-display " "))
+  (with-charterm (charterm-clear-screen))
+  (graphics-print graphics)
   (incre-pc)
 )
 
