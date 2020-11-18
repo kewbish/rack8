@@ -98,8 +98,15 @@ state)
 (define (timer-active? timer) (> (timer-value timer) 0))
 
 ; display graphics w/ gui
-(define frame (new frame% [label "rack8 - Chip-8 interpreter in Racket"] [width 400px] [height 400px]))
+(define frame (new frame% [label "rack8 - Chip-8 interpreter in Racket"] [width 512] [height 512]))
 (send frame show #t)
+(define (graphics-paint graphics)
+  (define dc (new canvas% [parent frame]))
+  (for ([i 32]) (for ([j 64])
+                     (if (= (2d-ref graphics j i) 128)
+                       (send dc draw-rectangle (* j 4) (* (+ j 1) 4) (* i 4) (* (+ i 1) 4))
+                       (void)))))
+  (send frame show #t)
 
 ; emulate one opcode
 (define (cycle)
@@ -193,11 +200,7 @@ state)
       (cond
         [(= kk #x07) (printf (format "[SET ~a TIMER ~a]" x (timer-value delay-timer)))
                      (set-reg x (timer-value delay-timer))]
-        [(= kk #x0A) (printf (format "[WAIT KEY TO ~a]" x)
-                                    (define key (charterm-read-key))
-                                    (if (dict-has-key? key-map key)
-                                        (set-reg x (dict-ref key-map key)) (void)))
-                     ]
+        [(= kk #x0A) (printf (format "[WAIT KEY TO ~a]" x))]
         [(= kk #x15) (printf (format "[SET DELAY ~a]" (get-reg x)))
                      (set-timer! delay-timer (get-reg x))]
         [(= kk #x18) (printf (format "[SET SOUND ~a]" (get-reg x)))
@@ -218,6 +221,7 @@ state)
                           (set-reg i (bytes-ref memory (+ (get-regi) i))))]
         [else (printf "[INVALID]")])]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
+  (graphics-paint graphics)
   (incre-pc)
 )
 
