@@ -99,14 +99,24 @@ state)
 
 ; display graphics w/ gui
 (define frame (new frame% [label "rack8 - Chip-8 interpreter in Racket"] [width 512] [height 512]))
+(define image (make-object bitmap% 512 512))
+(define canvas (new canvas% [parent frame] [paint-callback (lambda (canvas dc) (send dc draw-bitmap image 0 0))]))
 (send frame show #t)
 (define (graphics-paint graphics)
-  (define dc (new canvas% [parent frame]))
+  (define drawer (send canvas get-dc))
   (for ([i 32]) (for ([j 64])
+                     (send drawer set-brush (if (= (2d-ref graphics j i) 128) "black" "white") 'solid)
+                     (send drawer set-pen (if (= (2d-ref graphics j i) 128) "black" "white")
+                     (send (send drawer get-pen) get-width) 'solid)
                      (if (= (2d-ref graphics j i) 128)
-                       (send dc draw-rectangle (* j 4) (* (+ j 1) 4) (* i 4) (* (+ i 1) 4))
+                       (send drawer draw-rectangle (* j 4) (* (+ j 1) 4) (* i 4) (* (+ i 1) 4))
                        (void)))))
   (send frame show #t)
+(define (graphics-draw x y b)
+  (for ([i 8])
+       (let ([ith (quotient b (expt 2 i))])
+       (when (and (odd? ith) (= (2d-ref graphics x y) 128)) (set-reg #xF 1))
+       (2d-set! graphics (+ x (- 7 i)) y (modulo ith 2)))))
 
 ; emulate one opcode
 (define (cycle)
@@ -185,10 +195,8 @@ state)
       (define random (random 0 255))
       (set-reg x (bitwise-and random kk))]
      [#xD000 (printf (format "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y)))
-      (for ([i ln]) (for ([j 8])
-                         (2d-set! graphics
-                         (+ (get-reg x) j) (+ (get-reg y) i)
-                         (bitwise-xor (bytes-ref memory (+ (get-regi) i)) (2d-ref graphics j i)))))]
+      (for ([i ln])
+           (graphics-draw (get-reg x) (+ (get-reg y) i) (bytes-ref memory (+ (get-regi) i))))]
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN]" x))
