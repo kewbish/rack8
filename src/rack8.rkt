@@ -53,12 +53,13 @@ state)
   (vector-set! (vector-ref 2d-vec x) y v))
 
 ; keys
-(define keys (make-bytes 16))
-(define key-map #hash((#\1 . 0) (#\2 . 1) (#\3 . 2) (#\4 . 3)
+(define keys (make-vector 16 #f))
+(define key-map (make-hash '((#\1 . 0) (#\2 . 1) (#\3 . 2) (#\4 . 3)
   (#\q . 4) (#\w . 5) (#\e . 6) (#\r . 7)
   (#\a . 8) (#\s . 9) (#\d . 10) (#\f . 11)
   (#\z . 12) (#\x . 13) (#\c . 14) (#\v . 15)
-  ))
+  )))
+(define key-press (cons #\0 (current-inexact-milliseconds)))
 
 ; stacks
 (define (pop-stack)
@@ -100,7 +101,15 @@ state)
 ; display graphics w/ gui
 (define frame (new frame% [label "rack8 - Chip-8 interpreter in Racket"] [width 512] [height 512]))
 (define image (make-object bitmap% 512 512))
-(define canvas (new canvas% [parent frame] [paint-callback (lambda (canvas dc) (send dc draw-bitmap image 0 0))]))
+(define ccanvas% (class canvas% (define/override (on-char key)
+                                 (let ([press (send key get-key-code)] [release  (send key get-key-release-code)])
+                                   (cond
+                                     [(and (char? press) (hash-has-key? key-map press))
+                                       (set! key-press (cons press (current-inexact-milliseconds)))
+                                       (vector-set! keys (hash-ref key-map press) #t)]
+                                     [(and (char? release) (hash-has-key? key-map release))
+                                       (vector-set! keys (hash-ref key-map release) #f)])))(super-new)))
+(define canvas (new ccanvas% [parent frame] [paint-callback (lambda (canvas dc) (send dc draw-bitmap image 0 0))]))
 (send frame show #t)
 (define (graphics-paint graphics)
   (define drawer (send canvas get-dc))
@@ -131,9 +140,6 @@ state)
   ; have to divide the mask by 100 to get the ones we want, similarly 10 for one
   (define x (/ (masked #x0f00) #x100))
   (define y (/ (masked #x00f0) #x10))
-  ; get-key loop
-  (for ([i 16])
-       (bytes-set! keys i 0))
   ; opcode cycle loop
   (match n
      [#x0000
@@ -200,9 +206,9 @@ state)
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN]" x))
-                     (if (= (bytes-ref keys x) 1) (incre-pc) (void))]
+                     (if (= (vector-ref keys x) 1) (incre-pc) (void))]
         [(= kk #xA1) (printf (format "[SKIP IF KEY ~a UP]" x))
-                     (if (= (bytes-ref keys x) 0) (incre-pc) (void))]
+                     (if (= (vector-ref keys x) 0) (incre-pc) (void))]
         [else (printf "[INVALID]")])]
      [#xF000
       (cond
