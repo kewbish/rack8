@@ -60,6 +60,8 @@ state)
   (#\z . 12) (#\x . 13) (#\c . 14) (#\v . 15)
   )))
 (define key-press (cons #\0 (current-inexact-milliseconds)))
+(define (pressed? key)
+  (vector-ref keys key))
 
 ; stacks
 (define (pop-stack)
@@ -100,16 +102,32 @@ state)
 
 ; display graphics w/ gui
 (define frame (new frame% [label "rack8 - Chip-8 interpreter in Racket"] [width 512] [height 512]))
-(define image (make-object bitmap% 512 512))
-(define ccanvas% (class canvas% (define/override (on-char key)
-                                 (let ([press (send key get-key-code)] [release  (send key get-key-release-code)])
-                                   (cond
-                                     [(and (char? press) (hash-has-key? key-map press))
-                                       (set! key-press (cons press (current-inexact-milliseconds)))
-                                       (vector-set! keys (hash-ref key-map press) #t)]
-                                     [(and (char? release) (hash-has-key? key-map release))
-                                       (vector-set! keys (hash-ref key-map release) #f)])))(super-new)))
-(define canvas (new ccanvas% [parent frame] [paint-callback (lambda (canvas dc) (send dc draw-bitmap image 0 0))]))
+(define ccanvas% (class canvas%
+                        (define/override (on-char key)
+                            (let ([press (send key get-key-code)] [release  (send key get-key-release-code)])
+                            (cond
+                              [(and (char? press) (hash-has-key? key-map press))
+                                (set! key-press (cons press (current-inexact-milliseconds)))
+                                (vector-set! keys (hash-ref key-map press) #t)]
+                              [(and (char? release) (hash-has-key? key-map release))
+                                (vector-set! keys (hash-ref key-map release) #f)])))
+                        (super-new [paint-callback] (lambda (canvas dc)
+                                  (let ([size (min (quotient (get-width) 64) (quotient (get-height) 32))])
+                                   (for ([y height])
+                                     (for ([x width])
+                                       (send dc set-brush
+                                             (if (= 1 (display-get x y))
+                                                 "black"
+                                                 "white")
+                                             'solid)
+                                       (send dc set-pen
+                                             (if (= 1 (display-get x y))
+                                                 "black"
+                                                 "white")
+                                             (send (send dc get-pen) get-width)
+                                             'solid)
+                                       (send dc draw-rectangle (* x size) (* y size) size size))))))]))
+(define canvas (new ccanvas% [parent frame]))
 (send frame show #t)
 (define (graphics-paint graphics)
   (define drawer (send canvas get-dc))
@@ -206,9 +224,9 @@ state)
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN]" x))
-                     (if (= (vector-ref keys x) 1) (incre-pc) (void))]
+                     (when (pressed? x) (incre-pc))]
         [(= kk #xA1) (printf (format "[SKIP IF KEY ~a UP]" x))
-                     (if (= (vector-ref keys x) 0) (incre-pc) (void))]
+                     (when (not (pressed? x)) (incre-pc))]
         [else (printf "[INVALID]")])]
      [#xF000
       (cond
