@@ -1,5 +1,4 @@
 #lang racket
-(require racket/gui/base)
 
 (struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable]))
 (define (read-rom path)
@@ -100,50 +99,7 @@ state)
   (tick-timer! sound-timer))
 (define (timer-active? timer) (> (timer-value timer) 0))
 
-; display graphics w/ gui
-(define frame (new frame% [label "rack8 - Chip-8 interpreter in Racket"] [width 512] [height 512]))
-(define ccanvas% (class canvas%
-                        (define/override (on-char key)
-                            (let ([press (send key get-key-code)] [release  (send key get-key-release-code)])
-                            (cond
-                              [(and (char? press) (hash-has-key? key-map press))
-                                (set! key-press (cons press (current-inexact-milliseconds)))
-                                (vector-set! keys (hash-ref key-map press) #t)]
-                              [(and (char? release) (hash-has-key? key-map release))
-                                (vector-set! keys (hash-ref key-map release) #f)])))
-                        (super-new [paint-callback] (lambda (canvas dc)
-                                  (let ([size (min (quotient (get-width) 64) (quotient (get-height) 32))])
-                                   (for ([y height])
-                                     (for ([x width])
-                                       (send dc set-brush
-                                             (if (= 1 (display-get x y))
-                                                 "black"
-                                                 "white")
-                                             'solid)
-                                       (send dc set-pen
-                                             (if (= 1 (display-get x y))
-                                                 "black"
-                                                 "white")
-                                             (send (send dc get-pen) get-width)
-                                             'solid)
-                                       (send dc draw-rectangle (* x size) (* y size) size size))))))]))
-(define canvas (new ccanvas% [parent frame]))
-(send frame show #t)
-(define (graphics-paint graphics)
-  (define drawer (send canvas get-dc))
-  (for ([i 32]) (for ([j 64])
-                     (send drawer set-brush (if (= (2d-ref graphics j i) 128) "black" "white") 'solid)
-                     (send drawer set-pen (if (= (2d-ref graphics j i) 128) "black" "white")
-                     (send (send drawer get-pen) get-width) 'solid)
-                     (if (= (2d-ref graphics j i) 128)
-                       (send drawer draw-rectangle (* j 4) (* (+ j 1) 4) (* i 4) (* (+ i 1) 4))
-                       (void)))))
-  (send frame show #t)
-(define (graphics-draw x y b)
-  (for ([i 8])
-       (let ([ith (quotient b (expt 2 i))])
-       (when (and (odd? ith) (= (2d-ref graphics x y) 128)) (set-reg #xF 1))
-       (2d-set! graphics (+ x (- 7 i)) y (modulo ith 2)))))
+; display graphics 
 
 ; emulate one opcode
 (define (cycle)
@@ -170,7 +126,7 @@ state)
      [#x2000 (printf (format "[SUBROUTINE AT ~a]" nnn)) (push-stack (get-pc)) (set-pc nnn)]
      [#x3000 (printf (format "[SKIP IF EQUAL ~a]" (= (get-reg x) kk)))
       (if (= (get-reg x) kk) (incre-pc) (void))]
-     [#x4000 (printf (format "[SKIP IF INEQUAL ~a]" (not (= (get-reg x) kk))))
+     [#x4000 (printf (format "[SKIP IF INEQUAL ~a)]" (not (= (get-reg x) kk))))
       (if (not (= (get-reg x) kk)) (incre-pc) (void))]
      [#x5000 (printf (format "[SKIP IF 2EQUAL ~a]" (= (get-reg x) (get-reg y))))
       (if (= (get-reg x) (get-reg y)) (incre-pc) (void))]
@@ -218,9 +174,7 @@ state)
      [#xC000 (printf (format "[SET ~a TO RAND~a]}" x kk))
       (define random (random 0 255))
       (set-reg x (bitwise-and random kk))]
-     [#xD000 (printf (format "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y)))
-      (for ([i ln])
-           (graphics-draw (get-reg x) (+ (get-reg y) i) (bytes-ref memory (+ (get-regi) i))))]
+     [#xD000 (printf (format "[DRAW ~a at ~a, ~a]" ln (get-reg x) (get-reg y)))]
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN]" x))
@@ -253,7 +207,6 @@ state)
                           (set-reg i (bytes-ref memory (+ (get-regi) i))))]
         [else (printf "[INVALID]")])]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
-  (graphics-paint graphics)
   (incre-pc)
 )
 
