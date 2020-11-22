@@ -170,7 +170,17 @@ state)
      [#xC000 (with-charterm (charterm-display (format "[SET ~a TO RAND~a] " x kk)))
       (define random (random 0 255))
       (set-reg x (bitwise-and random kk))]
-     [#xD000 (with-charterm (charterm-display (format "[DRAW ~a at ~a, ~a] " ln (get-reg x) (get-reg y))))]
+     [#xD000 (with-charterm (charterm-display (format "[DRAW ~a at ~a, ~a] " ln (get-reg x) (get-reg y))))
+             (set-reg #xF 0)
+             (for ([row ln])
+                  (let ([pixel (bytes-ref memory (+ (get-regi) row))])
+                    (for ([col 8])
+                         (let ([bit (bitwise-and (arithmetic-shift #b10000000 (- col)))])
+                           (if (and (and (not (= bit 0)) (< (+ (get-reg x) col) 64)) (< (+ (get-reg y) row) 32))
+                             (let ([graphics_coord (2d-ref graphics (+ (get-reg x) col) (+ (get-reg y) row))])
+                               (if (= graphics_coord 1)
+                                (set-reg #xF 1) (void))
+                             (2d-set! graphics (+ (get-reg x) col) (+ (get-reg y) row) (bitwise-and graphics_coord 1))) (void))))))]
      [#xE000
       (cond
         [(= kk #x9E) (with-charterm (charterm-display (format "[SKIP IF KEY ~a DN] " x)))
