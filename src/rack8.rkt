@@ -59,9 +59,6 @@ state)
   (#\a . 8) (#\s . 9) (#\d . 10) (#\f . 11)
   (#\z . 12) (#\x . 13) (#\c . 14) (#\v . 15)
   )))
-(define key-press (cons #\0 (current-inexact-milliseconds)))
-(define (pressed? key)
-  (vector-ref keys key))
 
 ; stacks
 (define (pop-stack)
@@ -99,8 +96,6 @@ state)
   (tick-timer! delay-timer)
   (tick-timer! sound-timer))
 (define (timer-active? timer) (> (timer-value timer) 0))
-
-; display graphics 
 
 ; emulate one opcode
 (define (cycle)
@@ -179,15 +174,21 @@ state)
      [#xE000
       (cond
         [(= kk #x9E) (with-charterm (charterm-display (format "[SKIP IF KEY ~a DN] " x)))
-                     (when (pressed? x) (incre-pc))]
+                     (let ([cur-key (charterm-read-key #:timeout 0.01)])
+                       (if (= (hash-ref key-map cur-key) (get-reg x))
+                         (incre-pc) (void)))]
         [(= kk #xA1) (with-charterm (charterm-display (format "[SKIP IF KEY ~a UP] " x)))
-                     (when (not (pressed? x)) (incre-pc))]
+                     (let ([cur-key (charterm-read-key #:timeout 0.01)])
+                       (if (not (= (hash-ref key-map cur-key) (get-reg x)))
+                         (incre-pc) (void)))]
         [else (with-charterm (charterm-display "[INVALID] "))])]
      [#xF000
       (cond
         [(= kk #x07) (with-charterm (charterm-display (format "[SET ~a TIMER ~a] " x (timer-value delay-timer))))
                      (set-reg x (timer-value delay-timer))]
-        [(= kk #x0A) (with-charterm (charterm-display (format "[WAIT KEY TO ~a] " x)))]
+        [(= kk #x0A) (with-charterm (charterm-display (format "[WAIT KEY TO ~a] " x))
+                                    (let ([cur-key (charterm-read-key)])
+                                      (set-reg x (hash-ref key-map cur-key))))]
         [(= kk #x15) (with-charterm (charterm-display (format "[SET DELAY ~a] " (get-reg x))))
                      (set-timer! delay-timer (get-reg x))]
         [(= kk #x18) (with-charterm (charterm-display (format "[SET SOUND ~a] " (get-reg x))))
