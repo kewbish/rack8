@@ -207,6 +207,7 @@ state)
                           (set-reg i (bytes-ref memory (+ (get-regi) i))))]
         [else (printf "[INVALID]")])]
      [n (printf "[~a: ~x|~a]" (get-pc) inst inst)])
+  (printf " ")
   (incre-pc)
 )
 
