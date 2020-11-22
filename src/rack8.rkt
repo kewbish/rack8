@@ -45,12 +45,12 @@ state)
 )
 
 ; graphics -> 2d vector (have to do some interesting vector layering)
-(define graphics ((for/vector ((i 32)) (make-vector 64 0))))
+(define graphics (for/vector ((i 32)) (make-vector 64 0)))
 ; helper refs and sets, will get values
 (define (2d-ref 2d-vec x y)
-  (vector-ref (vector-ref 2d-vec x) y))
+  (vector-ref (vector-ref 2d-vec y) x))
 (define (2d-set! 2d-vec x y v)
-  (vector-set! (vector-ref 2d-vec x) y v))
+  (vector-set! (vector-ref 2d-vec y) x v))
 
 ; keys
 (define keys (make-vector 16 #f))
@@ -104,10 +104,10 @@ state)
   (for ([y 32])
        (for ([x 64])
             (if (= (2d-ref graphics x y) 1)
-              (string-set! display-string (+ (* y 64) 32) #\M) (void))))
+              (string-set! display-string (+ (* y 64) x) #\M) (void))))
   (with-charterm
     (charterm-clear-screen)
-    (charterm-display display-string)))
+    (charterm-display display-string #:width 64 #:truncate #f)))
 (define (graphics-dump graphics)
   (printf "~a" graphics))
 
@@ -194,17 +194,19 @@ state)
                              (let ([graphics_coord (2d-ref graphics (+ (get-reg x) col) (+ (get-reg y) row))])
                                (if (= graphics_coord 1)
                                 (set-reg #xF 1) (void))
-                             (2d-set! graphics (+ (get-reg x) col) (+ (get-reg y) row) (bitwise-and graphics_coord 1))) (void))))))]
+                             (2d-set! graphics (+ (get-reg x) col) (+ (get-reg y) row) (bitwise-xor graphics_coord 1))) (void))))))]
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN] " x))
                      (let ([cur-key (charterm-read-key #:timeout 0.01)])
-                       (if (= (hash-ref key-map cur-key) (get-reg x))
-                         (incre-pc) (void)))]
+                       (if (hash-has-key key-map cur-key)
+                         (if (= (hash-ref key-map cur-key) (get-reg x))
+                           (incre-pc) (void)) (void)))]
         [(= kk #xA1) (printf (format "[SKIP IF KEY ~a UP] " x))
                      (let ([cur-key (charterm-read-key #:timeout 0.01)])
-                       (if (not (= (hash-ref key-map cur-key) (get-reg x)))
-                         (incre-pc) (void)))]
+                       (if (hash-has-key key-map cur-key)
+                         (if (not (= (hash-ref key-map cur-key) (get-reg x)))
+                           (incre-pc) (void)) (void)))]
         [else (printf "[INVALID] ")])]
      [#xF000
       (cond
@@ -234,7 +236,7 @@ state)
         [else (printf "[INVALID] ")])]
      [n (printf "[~a: ~x|~a] " (get-pc) inst inst)])
   (incre-pc)
+  (graphics-print graphics)
 )
 
 (for ([i 100]) (cycle))
-(graphics-dump graphics)
