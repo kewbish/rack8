@@ -99,15 +99,15 @@ state)
 
 ; graphics helpers
 (define (graphics-print graphics)
-  ; (define block (integer->char 2588))
-  (define display-string (make-string 2048 #\space))
-  (for ([y 32])
-       (for ([x 64])
-            (if (= (2d-ref graphics x y) 1)
-              (string-set! display-string (+ (* y 64) x) #\M) (void))))
   (with-charterm
     (charterm-clear-screen)
-    (charterm-display display-string #:width 64 #:truncate #f)))
+    (for ([y 32])
+         (let ([display-string (make-string 64 #\space)])
+           (for ([x 64])
+                (if (= (2d-ref graphics x y) 1)
+                  (string-set! display-string x #\M) (void))
+                (charterm-display display-string)))
+         (charterm-newline))))
 (define (graphics-dump graphics)
   (printf "~a" graphics))
 
@@ -199,12 +199,12 @@ state)
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN] " x))
                      (let ([cur-key (charterm-read-key #:timeout 0.01)])
-                       (if (hash-has-key key-map cur-key)
+                       (if (hash-has-key? key-map cur-key)
                          (if (= (hash-ref key-map cur-key) (get-reg x))
                            (incre-pc) (void)) (void)))]
         [(= kk #xA1) (printf (format "[SKIP IF KEY ~a UP] " x))
                      (let ([cur-key (charterm-read-key #:timeout 0.01)])
-                       (if (hash-has-key key-map cur-key)
+                       (if (hash-has-key? key-map cur-key)
                          (if (not (= (hash-ref key-map cur-key) (get-reg x)))
                            (incre-pc) (void)) (void)))]
         [else (printf "[INVALID] ")])]
