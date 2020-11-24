@@ -125,11 +125,12 @@ state)
   (define x (/ (masked #x0f00) #x100))
   (define y (/ (masked #x00f0) #x10))
   ; opcode cycle loop
+  (incre-pc)
   (match n
      [#x0000
       (cond
         [(= inst #x00e0) (printf "[CLEAR SCREEN] ") (set! graphics ((for/vector ((i 32)) (make-vector 64 0))))]
-        [(= inst #x00ee) (printf "[RETURN] ")]
+        [(= inst #x00ee) (printf "[RETURN] ") (set-pc (pop-stack))]
         [(and (= n #x0000) (not (= inst #x0000))) (printf "[CALL AT ~a]" nnn)]
         [else (with-charterm (charterm-display "[EMPTY]"))])]
      [#x1000 (printf (format "[JUMP TO ADDRESS ~a] " nnn)) (set-pc nnn)]
@@ -140,7 +141,7 @@ state)
       (if (not (= (get-reg x) kk)) (incre-pc) (void))]
      [#x5000 (printf (format "[SKIP IF 2EQUAL ~a] " (= (get-reg x) (get-reg y))))
       (if (= (get-reg x) (get-reg y)) (incre-pc) (void))]
-     [#x6000 (printf (format "[SET REG ~a] " x)) (set-reg x kk)]
+     [#x6000 (printf (format "[SET REG ~a ~a] " x kk)) (set-reg x kk)]
      [#x7000 (printf (format "[ADD ~a TO REG ~a] " kk x)) (set-reg x (+ (get-reg x) kk))]
      [#x8000
       (cond
@@ -184,13 +185,13 @@ state)
      [#xC000 (printf (format "[SET ~a TO RAND~a] " x kk))
       (define random (random 0 255))
       (set-reg x (bitwise-and random kk))]
-     [#xD000 (printf (format "[DRAW ~a at ~a, ~a] " ln (get-reg x) (get-reg y)))
+     [#xD000 (printf (format "[DRAW ~a at ~a, ~a | ~a, ~a] " ln (get-reg x) (get-reg y) x y))
              (set-reg #xF 0)
              (for ([row ln])
                   (let ([pixel (bytes-ref memory (+ (get-regi) row))])
                     (for ([col 8])
-                         (let ([bit (bitwise-and (arithmetic-shift #b10000000 (- col)))])
-                           (if (and (and (not (= bit 0)) (< (+ (get-reg x) col) 64)) (< (+ (get-reg y) row) 32))
+                         (let ([bit (bitwise-and (arithmetic-shift #b10000000 (- col)) pixel)])
+                           (if (and (not (= bit 0)) (<= (+ (get-reg x) col) 64) (<= (+ (get-reg y) row) 32))
                              (let ([graphics_coord (2d-ref graphics (+ (get-reg x) col) (+ (get-reg y) row))])
                                (if (= graphics_coord 1)
                                 (set-reg #xF 1) (void))
@@ -235,7 +236,6 @@ state)
                           (set-reg i (bytes-ref memory (+ (get-regi) i))))]
         [else (printf "[INVALID] ")])]
      [n (printf "[~a: ~x|~a] " (get-pc) inst inst)])
-  (incre-pc)
   (graphics-print graphics)
 )
 
