@@ -82,7 +82,6 @@ state)
 (struct timer ([value #:mutable] [last-set #:mutable]))
 ; these two are actual timer objects
 (define delay-timer (timer 0 0))
-(define sound-timer (timer 0 0))
 ; timer helper methods
 (define (set-timer! timer time)
   (set-timer-value! timer time)
@@ -93,8 +92,7 @@ state)
       (set-timer-value! timer (- (timer-value timer) 1))
       (set-timer-last-set! timer (current-milliseconds)))))
 (define (tick-timers!)
-  (tick-timer! delay-timer)
-  (tick-timer! sound-timer))
+  (tick-timer! delay-timer))
 (define (timer-active? timer) (> (timer-value timer) 0))
 
 ; graphics helpers
@@ -218,11 +216,11 @@ state)
         [(= kk #x0A) (printf (format "[WAIT KEY TO ~a] " x))
                      (with-charterm (let ([cur-key (charterm-read-key)])
                                       (if (hash-has-key? key-map cur-key)
-                                        (set-reg x (hash-ref key-map cur-key)) (void))))]
+                                        ((printf "~a" (hash-ref key-map cur-key))
+                                        (set-reg x (hash-ref key-map cur-key)))
+                                        (void))))]
         [(= kk #x15) (printf (format "[SET DELAY ~a] " (get-reg x)))
                      (set-timer! delay-timer (get-reg x))]
-        [(= kk #x18) (printf (format "[SET SOUND ~a] " (get-reg x)))
-                     (set-timer! sound-timer (get-reg x))]
         [(= kk #x1E) (printf (format "[ADD I ~a] " (get-reg x)))
                      (set-regi (+ (get-regi) (get-reg x)))]
         [(= kk #x29) (printf (format "[SET I SPR ~a] " (get-reg x)))
