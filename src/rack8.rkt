@@ -140,7 +140,11 @@ state)
      [#x5000 (printf (format "[SKIP IF 2EQUAL ~a] " (= (get-reg x) (get-reg y))))
       (if (= (get-reg x) (get-reg y)) (incre-pc) (void))]
      [#x6000 (printf (format "[SET REG ~a ~a] " x kk)) (set-reg x kk)]
-     [#x7000 (printf (format "[ADD ~a TO REG ~a] " kk x)) (set-reg x (+ (get-reg x) kk))]
+     [#x7000 (printf (format "[ADD ~a TO REG ~a, FIRST ~a] " kk x (get-reg x)))
+      (let ([added (+ (get-reg x) kk)])
+        (if (> added 255)
+          (set! added (- added 256)) (void))
+        (set-reg x added))]
      [#x8000
       (cond
         [(= ln #x0) (printf (format "[SET ~a TO ~a] " x (get-reg y))) (set-reg x (get-reg y))]
@@ -216,8 +220,7 @@ state)
         [(= kk #x0A) (printf (format "[WAIT KEY TO ~a] " x))
                      (with-charterm (let ([cur-key (charterm-read-key)])
                                       (if (hash-has-key? key-map cur-key)
-                                        ((printf "~a" (hash-ref key-map cur-key))
-                                        (set-reg x (hash-ref key-map cur-key)))
+                                        (set-reg x (hash-ref key-map cur-key))
                                         (void))))]
         [(= kk #x15) (printf (format "[SET DELAY ~a] " (get-reg x)))
                      (set-timer! delay-timer (get-reg x))]
@@ -226,9 +229,9 @@ state)
         [(= kk #x29) (printf (format "[SET I SPR ~a] " (get-reg x)))
                      (set-regi (* 5 (get-reg x)))]
         [(= kk #x33) (printf (format "[BCD I ~a] " (get-reg x)))
-                     (bytes-set! memory (get-regi) (/ (get-reg x) #x100))
-                     (bytes-set! memory (+ 1 (get-regi)) (/ (get-reg x) #x010))
-                     (bytes-set! memory (+ 2 (get-regi)) (/ (get-reg x) #x001))]
+                     (bytes-set! memory (get-regi) (truncate (/ (get-reg x) 100)))
+                     (bytes-set! memory (+ 1 (get-regi)) (truncate (modulo (/ (get-reg x) 100) 10)))
+                     (bytes-set! memory (+ 2 (get-regi)) (modulo (get-reg x) 10))]
         [(= kk #x55) (printf (format "[STORE I TO ~a] " x))
                      (for ([i (+ x 1)])
                           (bytes-set! memory (+ (get-regi) i) (get-reg i)))]
