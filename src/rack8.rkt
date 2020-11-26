@@ -145,7 +145,7 @@ state)
      [#x7000 (printf (format "[ADD ~a TO REG ~a] " kk x)) (set-reg x (+ (get-reg x) kk))]
      [#x8000
       (cond
-        [(= ln #x0) (printf (format "[SET ~a TO ~a] " x (get-reg y)) (set-reg x (get-reg y)))]
+        [(= ln #x0) (printf (format "[SET ~a TO ~a] " x (get-reg y))) (set-reg x (get-reg y))]
         [(= ln #x1) (printf (format "[OR ~a TO ~a|~a] " x (get-reg x) (get-reg y)))
                     (set-reg x (bitwise-ior (get-reg x) (get-reg y)))]
         [(= ln #x2) (printf (format "[AND ~a TO ~a&~a] " x (get-reg x) (get-reg y)))
@@ -190,11 +190,13 @@ state)
              (for ([row ln])
                   (let ([pixel (bytes-ref memory (+ (get-regi) row))])
                     (for ([col 8])
+                         ; and each bit with the bytestring that's shifted -> does the bit exist
                          (let ([bit (bitwise-and (arithmetic-shift #b10000000 (- col)) pixel)])
                            (if (and (not (= bit 0)) (<= (+ (get-reg x) col) 64) (<= (+ (get-reg y) row) 32))
                              (let ([graphics_coord (2d-ref graphics (+ (get-reg x) col) (+ (get-reg y) row))])
                                (if (= graphics_coord 1)
                                 (set-reg #xF 1) (void))
+                               ; then xor onto screen
                              (2d-set! graphics (+ (get-reg x) col) (+ (get-reg y) row) (bitwise-xor graphics_coord 1))) (void))))))]
      [#xE000
       (cond
@@ -215,7 +217,8 @@ state)
                      (set-reg x (timer-value delay-timer))]
         [(= kk #x0A) (printf (format "[WAIT KEY TO ~a] " x))
                      (with-charterm (let ([cur-key (charterm-read-key)])
-                       (set-reg x (hash-ref key-map cur-key))))]
+                                      (if (hash-has-key? key-map cur-key)
+                                        (set-reg x (hash-ref key-map cur-key)) (void))))]
         [(= kk #x15) (printf (format "[SET DELAY ~a] " (get-reg x)))
                      (set-timer! delay-timer (get-reg x))]
         [(= kk #x18) (printf (format "[SET SOUND ~a] " (get-reg x)))
