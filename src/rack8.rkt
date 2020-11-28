@@ -1,7 +1,7 @@
 #lang racket
 (require charterm)
 
-(struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable]))
+(struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable] [endloop #:mutable]))
 (define (read-rom path)
   (define loaded (file->bytes path))
   loaded)
@@ -9,7 +9,7 @@
 (define (set-init path)
   (define rom-bytes (read-rom path))
   ; create a chip8 state, set most to empty vals
-  (define state (chip8-state (make-bytes #x1000) #x200 '() (make-bytes 16) #x0))
+  (define state (chip8-state (make-bytes #x1000) #x200 '() (make-bytes 16) #x0 #f))
   ; load the program and fontset into the memory
   (bytes-copy! (chip8-state-memory state) #x200 rom-bytes)
   (bytes-copy! (chip8-state-memory state) 0 (bytes #xF0 #x90 #x90 #x90 #xF0))
@@ -32,6 +32,7 @@ state)
 
 ; create state object, will be used thruo interpreting
 (define state (set-init "CONNECT4.ch8"))
+(define end-loop (chip8-state-endloop state))
 
 ; memory -> definition and helper
 (define memory (chip8-state-memory state))
@@ -221,7 +222,9 @@ state)
                      (with-charterm (let ([cur-key (charterm-read-key)])
                                       (if (hash-has-key? key-map cur-key)
                                         (set-reg x (hash-ref key-map cur-key))
-                                        (void))))]
+                                        (if (not (boolean? cur-key))
+                                          (if (equal? cur-key #\p)
+                                            (set! end-loop #t) (void)) (void)))))]
         [(= kk #x15) (printf (format "[SET DELAY ~a] " (get-reg x)))
                      (set-timer! delay-timer (get-reg x))]
         [(= kk #x1E) (printf (format "[ADD I ~a] " (get-reg x)))
@@ -243,4 +246,6 @@ state)
   (graphics-print graphics)
 )
 
-(for ([i 100000]) (cycle))
+(let rep-cycle ()
+  (when (not end-loop)
+    (cycle) (rep-cycle)))
