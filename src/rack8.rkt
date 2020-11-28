@@ -203,12 +203,12 @@ state)
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN] " x))
-                     (let ([cur-key (charterm-read-key #:timeout 0.01)])
+                     (let ([cur-key (charterm-read-key #:timeout 0.001)])
                        (if (hash-has-key? key-map cur-key)
                          (if (= (hash-ref key-map cur-key) (get-reg x))
                            (incre-pc) (void)) (void)))]
         [(= kk #xA1) (printf (format "[SKIP IF KEY ~a UP] " x))
-                     (let ([cur-key (charterm-read-key #:timeout 0.01)])
+                     (let ([cur-key (charterm-read-key #:timeout 0.001)])
                        (if (hash-has-key? key-map cur-key)
                          (if (not (= (hash-ref key-map cur-key) (get-reg x)))
                            (incre-pc) (void)) (void)))]
@@ -243,4 +243,4 @@ state)
   (graphics-print graphics)
 )
 
-(for ([i 100]) (cycle))
+(for ([i 100000]) (cycle))
