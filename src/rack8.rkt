@@ -4,6 +4,8 @@
 (struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable] [endloop #:mutable]))
 
 (define path "CONNECT4.ch8") ; change this line if you'd like to change the ROM
+(if (not (vector-empty? (current-command-line-arguments)))
+  (set! path (vector-ref (current-command-line-arguments) 0)) (void))
 
 (define (read-rom path)
   (define loaded #f)
