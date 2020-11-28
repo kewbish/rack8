@@ -2,8 +2,17 @@
 (require charterm)
 
 (struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable] [endloop #:mutable]))
+
+(define path "CONNECT4.ch8") ; change this line if you'd like to change the ROM
+
 (define (read-rom path)
-  (define loaded (file->bytes path))
+  (define loaded #f)
+  (if (file-exists? path)
+    (set! loaded (file->bytes path)) (void))
+  (if (equal? (list-ref (string-split path ".") 1) "ch8")
+    (void) (set! loaded #f))
+  (if (equal? loaded #f)
+    (raise "Chip-8 ROM does not exist, or is not a valid file.") (void))
   loaded)
 
 (define (set-init path)
@@ -31,7 +40,7 @@
 state)
 
 ; create state object, will be used thruo interpreting
-(define state (set-init "CONNECT4.ch8"))
+(define state (set-init path))
 (define end-loop (chip8-state-endloop state))
 
 ; memory -> definition and helper
