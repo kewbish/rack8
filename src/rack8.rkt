@@ -79,7 +79,7 @@ state)
          [(cons h t)
           (set-chip8-state-stack! state t) h]))
 (define (push-stack v)
-  (set-chip8-state-stack! state cons(v (chip8-state-stack state))))
+  (set-chip8-state-stack! state (cons v (chip8-state-stack state))))
 
 ; registers and counters
 (define (get-pc) (chip8-state-pc state))
@@ -167,15 +167,15 @@ state)
         [(= ln #x3) (printf (format "[XOR ~a TO ~a+~a] " x (get-reg x) (get-reg y)))
                     (set-reg x (bitwise-xor (get-reg x) (get-reg y)))]
         [(= ln #x4) (printf (format "[ADD ~a TO ~a+~a] " x (get-reg x) (get-reg y)))
-                    (define added (+ (get-reg x) (get-reg y)))
-                    (if (> added 255) (begin (set-reg #xF 1) (set! added 255)) (set-reg #xF 0))
-                    (set-reg x added)]
+                    (let ([res (+ (get-reg x) (get-reg y))])
+                      (begin
+                        (set-reg x (modulo res #x100))
+                        (set-reg #xF (if (> res #xff) 1 0))))]
         [(= ln #x5) (printf (format "[SUB ~a TO ~a-~a] " x (get-reg x) (get-reg y)))
-                    (define subbed (- (get-reg x) (get-reg y)))
-                    (if (> (get-reg x) (get-reg y))
-                      (begin (set-reg #xF 1) (set! subbed (modulo subbed 255)))
-                      (set-reg #xF 0))
-                    (set-reg x subbed)]
+                    (let ([res (- (get-reg x) (get-reg y))])
+                      (begin
+                        (set-reg x (modulo res #x100))
+                        (set-reg #xF (if (> res 0) 1 0))))]
         [(= ln #x6) (printf (format "[SHR ~a TO ~a] " x (get-reg x)))
                     (set-reg #xF (bitwise-and #x1 (get-reg y)))
                     (define shiftr (arithmetic-shift (get-reg y) (- 1)))
@@ -188,7 +188,7 @@ state)
                     (set-reg x subbed)]
         [(= ln #xE) (printf (format "[SHL ~a WITH ~a] " x (get-reg x)))
                     (set-reg #xF (bitwise-and #x80 (get-reg y)))
-                    (define shiftl (arithmetic-shift (get-reg y) 1))
+                    (define shiftl (modulo (arithmetic-shift (get-reg y) 1) #x100))
                     (set-reg x shiftl)]
         [else (printf "[INVALID] ")])]
      [#x9000 (printf (format "[SKIP NEXT ~a] " (not (= (get-reg x) (get-reg y)))))
@@ -244,7 +244,7 @@ state)
                      (set-regi (* 5 (get-reg x)))]
         [(= kk #x33) (printf (format "[BCD I ~a] " (get-reg x)))
                      (bytes-set! memory (get-regi) (truncate (/ (get-reg x) 100)))
-                     (bytes-set! memory (+ 1 (get-regi)) (truncate (modulo (/ (get-reg x) 100) 10)))
+                     (bytes-set! memory (+ 1 (get-regi)) (truncate (/ (modulo (get-reg x) 100) 10)))
                      (bytes-set! memory (+ 2 (get-regi)) (modulo (get-reg x) 10))]
         [(= kk #x55) (printf (format "[STORE I TO ~a] " x))
                      (for ([i (+ x 1)])
