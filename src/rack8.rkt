@@ -215,12 +215,12 @@ state)
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN] " x))
-                     (let ([cur-key (charterm-read-key #:timeout 0.001)])
+                     (let ([cur-key (charterm-read-key #:timeout 0)])
                        (if (hash-has-key? key-map cur-key)
                          (if (= (hash-ref key-map cur-key) (get-reg x))
                            (incre-pc) (void)) (void)))]
         [(= kk #xA1) (printf (format "[SKIP IF KEY ~a UP] " x))
-                     (let ([cur-key (charterm-read-key #:timeout 0.001)])
+                     (let ([cur-key (charterm-read-key #:timeout 0)])
                        (if (hash-has-key? key-map cur-key)
                          (if (not (= (hash-ref key-map cur-key) (get-reg x)))
                            (incre-pc) (void)) (void)))]
@@ -232,10 +232,7 @@ state)
         [(= kk #x0A) (printf (format "[WAIT KEY TO ~a] " x))
                      (with-charterm (let ([cur-key (charterm-read-key)])
                                       (if (hash-has-key? key-map cur-key)
-                                        (set-reg x (hash-ref key-map cur-key))
-                                        (if (not (boolean? cur-key))
-                                          (if (equal? cur-key #\p)
-                                            (set! end-loop #t) (void)) (void)))))]
+                                        (set-reg x (hash-ref key-map cur-key)) (void))))]
         [(= kk #x15) (printf (format "[SET DELAY ~a] " (get-reg x)))
                      (set-timer! delay-timer (get-reg x))]
         [(= kk #x1E) (printf (format "[ADD I ~a] " (get-reg x)))
@@ -255,6 +252,11 @@ state)
         [else (printf "[INVALID] ")])]
      [n (printf "[~a: ~x|~a] " (get-pc) inst inst)])
   (graphics-print graphics)
+  (with-charterm
+    (let ([cur-key (charterm-read-key #:timeout 0)])
+      (if (not (boolean? cur-key))
+        (if (equal? cur-key #\p)
+          (set! end-loop #t) (void)) (void))))
 )
 
 (let rep-cycle ()
