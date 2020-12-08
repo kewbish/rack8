@@ -3,7 +3,7 @@
 
 (struct chip8-state (memory [pc #:mutable] [stack #:mutable] registers [reg-i #:mutable] [endloop #:mutable]))
 
-(define path "CONNECT4.ch8") ; change this line if you'd like to change the ROM
+(define path "CONNECT4.ch8") ; change this line if you'd like to change the default ROM
 (if (not (vector-empty? (current-command-line-arguments)))
   (set! path (vector-ref (current-command-line-arguments) 0)) (void))
 
@@ -41,7 +41,7 @@
   (bytes-copy! (chip8-state-memory state) 75 (bytes #xF0 #x80 #xF0 #x80 #x80))
 state)
 
-; create state object, will be used thruo interpreting
+; create state object and end loop accessor
 (define state (set-init path))
 (define end-loop (chip8-state-endloop state))
 
@@ -64,49 +64,6 @@ state)
 (define (2d-set! 2d-vec x y v)
   (vector-set! (vector-ref 2d-vec y) x v))
 
-; keys
-(define keys (make-vector 16 #f))
-(define key-map (make-hash '((#\1 . 0) (#\2 . 1) (#\3 . 2) (#\4 . 3)
-  (#\q . 4) (#\w . 5) (#\e . 6) (#\r . 7)
-  (#\a . 8) (#\s . 9) (#\d . 10) (#\f . 11)
-  (#\z . 12) (#\x . 13) (#\c . 14) (#\v . 15)
-  )))
-
-; stacks
-(define (pop-stack)
-  (match (chip8-state-stack state)
-         ['() (error "rack8 - empty stack.")]
-         [(cons h t)
-          (set-chip8-state-stack! state t) h]))
-(define (push-stack v)
-  (set-chip8-state-stack! state (cons v (chip8-state-stack state))))
-
-; registers and counters
-(define (get-pc) (chip8-state-pc state))
-(define (set-pc v) (set-chip8-state-pc! state v))
-(define (incre-pc) (set-pc (+ (get-pc) 2)))
-(define (get-reg n) (bytes-ref (chip8-state-registers state) n))
-(define (set-reg n v) (bytes-set! (chip8-state-registers state) n v))
-(define (get-regi) (chip8-state-reg-i state))
-(define (set-regi v) (set-chip8-state-reg-i! state v))
-
-; timers
-(struct timer ([value #:mutable] [last-set #:mutable]))
-; these two are actual timer objects
-(define delay-timer (timer 0 0))
-; timer helper methods
-(define (set-timer! timer time)
-  (set-timer-value! timer time)
-  (set-timer-last-set! timer (current-milliseconds)))
-(define (tick-timer! timer time)
-  (when (>= (- (current-milliseconds) (timer-last-set timer)) 1000)
-    (begin
-      (set-timer-value! timer (- (timer-value timer) 1))
-      (set-timer-last-set! timer (current-milliseconds)))))
-(define (tick-timers!)
-  (tick-timer! delay-timer))
-(define (timer-active? timer) (> (timer-value timer) 0))
-
 ; graphics helpers
 (define (graphics-print graphics)
   (with-charterm
@@ -120,6 +77,49 @@ state)
          (charterm-newline))))
 (define (graphics-dump graphics)
   (printf "~a" graphics))
+
+; keys -> hashmap
+(define keys (make-vector 16 #f))
+(define key-map (make-hash '((#\1 . 0) (#\2 . 1) (#\3 . 2) (#\4 . 3)
+  (#\q . 4) (#\w . 5) (#\e . 6) (#\r . 7)
+  (#\a . 8) (#\s . 9) (#\d . 10) (#\f . 11)
+  (#\z . 12) (#\x . 13) (#\c . 14) (#\v . 15)
+  )))
+
+; stacks and helpers
+(define (pop-stack)
+  (match (chip8-state-stack state)
+         ['() (error "rack8 - empty stack.")]
+         [(cons h t) ; will match any pair
+          (set-chip8-state-stack! state t) h]))
+(define (push-stack v)
+  (set-chip8-state-stack! state (cons v (chip8-state-stack state))))
+
+; registers and counters
+(define (get-pc) (chip8-state-pc state))
+(define (set-pc v) (set-chip8-state-pc! state v))
+(define (incre-pc) (set-pc (+ (get-pc) 2)))
+(define (get-reg n) (bytes-ref (chip8-state-registers state) n))
+(define (set-reg n v) (bytes-set! (chip8-state-registers state) n v))
+(define (get-regi) (chip8-state-reg-i state))
+(define (set-regi v) (set-chip8-state-reg-i! state v))
+
+; timers -> helper structs and methods
+(struct timer ([value #:mutable] [last-set #:mutable]))
+; timer helper methods
+(define (set-timer! timer time)
+  (set-timer-value! timer time)
+  (set-timer-last-set! timer (current-milliseconds)))
+(define (tick-timer! timer time)
+  (when (>= (- (current-milliseconds) (timer-last-set timer)) 1000)
+    (begin
+      (set-timer-value! timer (- (timer-value timer) 1))
+      (set-timer-last-set! timer (current-milliseconds)))))
+(define (tick-timers!)
+  (tick-timer! delay-timer))
+(define (timer-active? timer) (> (timer-value timer) 0))
+; actual timer
+(define delay-timer (timer 0 0))
 
 ; emulate one opcode
 (define (cycle)
@@ -139,8 +139,10 @@ state)
   (match n
      [#x0000
       (cond
+        ; clears the graphics by resetting contents of graphics
         [(= inst #x00e0) (printf "[CLEAR SCREEN] ") (set! graphics ((for/vector ((i 32)) (make-vector 64 0))))]
         [(= inst #x00ee) (printf "[RETURN] ") (set-pc (pop-stack))]
+        ; call generally isn't implemented or used very often
         [(and (= n #x0000) (not (= inst #x0000))) (printf "[CALL AT ~a]" nnn)]
         [else (with-charterm (charterm-display "[EMPTY]"))])]
      [#x1000 (printf (format "[JUMP TO ADDRESS ~a] " nnn)) (set-pc nnn)]
@@ -154,7 +156,7 @@ state)
      [#x6000 (printf (format "[SET REG ~a ~a] " x kk)) (set-reg x kk)]
      [#x7000 (printf (format "[ADD ~a TO REG ~a, FIRST ~a] " kk x (get-reg x)))
       (let ([added (+ (get-reg x) kk)])
-        (if (> added 255)
+        (if (> added 255) ; check if valid byte or else out of range
           (set! added (- added 256)) (void))
         (set-reg x added))]
      [#x8000
@@ -170,7 +172,7 @@ state)
                     (let ([res (+ (get-reg x) (get-reg y))])
                       (begin
                         (set-reg x (modulo res #x100))
-                        (set-reg #xF (if (> res #xff) 1 0))))]
+                        (set-reg #xF (if (> res 256) 1 0))))] ; check range
         [(= ln #x5) (printf (format "[SUB ~a TO ~a-~a] " x (get-reg x) (get-reg y)))
                     (let ([res (- (get-reg x) (get-reg y))])
                       (begin
@@ -206,21 +208,24 @@ state)
                     (for ([col 8])
                          ; and each bit with the bytestring that's shifted -> does the bit exist
                          (let ([bit (bitwise-and (arithmetic-shift #b10000000 (- col)) pixel)])
+                           ; valid range of x, y coords and if exists
                            (if (and (not (= bit 0)) (<= (+ (get-reg x) col) 64) (<= (+ (get-reg y) row) 32))
+                             ; get the pixel from graphics itself
                              (let ([graphics_coord (2d-ref graphics (+ (get-reg x) col) (+ (get-reg y) row))])
                                (if (= graphics_coord 1)
                                 (set-reg #xF 1) (void))
                                ; then xor onto screen
-                             (2d-set! graphics (+ (get-reg x) col) (+ (get-reg y) row) (bitwise-xor graphics_coord 1))) (void))))))]
+                                (2d-set! graphics (+ (get-reg x) col) (+ (get-reg y) row) (bitwise-xor graphics_coord 1))) (void))))))]
      [#xE000
       (cond
         [(= kk #x9E) (printf (format "[SKIP IF KEY ~a DN] " x))
-                     (let ([cur-key (charterm-read-key #:timeout 0)])
+                     ; timeout of zero could also work but would be a bit difficult to get exact
+                     (let ([cur-key (charterm-read-key #:timeout 0.0001)])
                        (if (hash-has-key? key-map cur-key)
                          (if (= (hash-ref key-map cur-key) (get-reg x))
                            (incre-pc) (void)) (void)))]
         [(= kk #xA1) (printf (format "[SKIP IF KEY ~a UP] " x))
-                     (let ([cur-key (charterm-read-key #:timeout 0)])
+                     (let ([cur-key (charterm-read-key #:timeout 0.0001)])
                        (if (hash-has-key? key-map cur-key)
                          (if (not (= (hash-ref key-map cur-key) (get-reg x)))
                            (incre-pc) (void)) (void)))]
@@ -244,7 +249,7 @@ state)
                      (bytes-set! memory (+ 1 (get-regi)) (truncate (/ (modulo (get-reg x) 100) 10)))
                      (bytes-set! memory (+ 2 (get-regi)) (modulo (get-reg x) 10))]
         [(= kk #x55) (printf (format "[STORE I TO ~a] " x))
-                     (for ([i (+ x 1)])
+                     (for ([i (+ x 1)]) ; for in range
                           (bytes-set! memory (+ (get-regi) i) (get-reg i)))]
         [(= kk #x65) (printf (format "[READ FROM I TO ~a] " x))
                      (for ([i (+ x 1)])
@@ -252,8 +257,9 @@ state)
         [else (printf "[INVALID] ")])]
      [n (printf "[~a: ~x|~a] " (get-pc) inst inst)])
   (graphics-print graphics)
+  ; quit loop
   (with-charterm
-    (let ([cur-key (charterm-read-key #:timeout 0)])
+    (let ([cur-key (charterm-read-key #:timeout 0.0001)])
       (if (not (boolean? cur-key))
         (if (equal? cur-key #\p)
           (set! end-loop #t) (void)) (void))))
